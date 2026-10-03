@@ -1,0 +1,8 @@
+# Database Configuration Example
+# Copy this file to db.properties and fill in your actual MySQL password
+
+db.host=localhost
+db.port=3306
+db.name=myfinancedb
+db.user=root
+db.password=PUT_MY_MYSQL_PASSWORD_HERE
