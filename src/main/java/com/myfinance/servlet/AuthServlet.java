@@ -25,6 +25,15 @@ public class AuthServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String action = request.getParameter("action");
+
+        // Handle logout
+        if ("logout".equals(action)) {
+            SessionUtil.logout(request);
+            response.sendRedirect(request.getContextPath() + "/auth");
+            return;
+        }
+
         // Check if already logged in
         if (SessionUtil.isLoggedIn(request)) {
             String role = SessionUtil.getUserRole(request);
@@ -36,7 +45,6 @@ public class AuthServlet extends HttpServlet {
             return;
         }
 
-        String action = request.getParameter("action");
         if ("register".equals(action)) {
             request.getRequestDispatcher("/jsp/auth/register.jsp").forward(request, response);
         } else {

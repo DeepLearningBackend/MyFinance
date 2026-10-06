@@ -1,17 +1,24 @@
 :root {
-    --primary: #f4a261;
-    --primary-dk: #e07b35;
-    --dark: #1a1a2e;
-    --surface: #ffffff;
-    --bg: #f5f7fa;
-    --text: #1e1e2e;
-    --text-muted: #888888;
-    --border: #eaedf3;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --radius: 12px;
-    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --primary: #00d4ff;
+    --primary-dk: #0099cc;
+    --primary-light: #66e5ff;
+    --dark: #0a0a0f;
+    --dark-blue: #0d1b2a;
+    --surface: rgba(20, 30, 50, 0.7);
+    --surface-solid: #141e32;
+    --bg: linear-gradient(135deg, #0a0a0f 0%, #0d1b2a 50%, #1b263b 100%);
+    --text: #e0e8f0;
+    --text-muted: #7a8a9a;
+    --border: rgba(0, 212, 255, 0.2);
+    --border-hover: rgba(0, 212, 255, 0.4);
+    --success: #00ff88;
+    --warning: #ffaa00;
+    --danger: #ff4466;
+    --radius: 16px;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    --glass-bg: rgba(20, 30, 50, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 * {
@@ -25,6 +32,7 @@ body {
     background: var(--bg);
     color: var(--text);
     line-height: 1.6;
+    min-height: 100vh;
 }
 
 a {
@@ -39,46 +47,55 @@ a:hover {
 /* Buttons */
 .btn {
     display: inline-block;
-    padding: 10px 20px;
-    border: none;
+    padding: 12px 24px;
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.3s ease;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    color: var(--text);
+    box-shadow: var(--shadow);
 }
 
 .btn-primary {
-    background: var(--primary);
-    color: white;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dk) 100%);
+    color: #0a0a0f;
+    border: 1px solid var(--primary);
+    box-shadow: var(--shadow-glow);
 }
 
 .btn-primary:hover {
-    background: var(--primary-dk);
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
 }
 
 .btn-danger {
-    background: var(--danger);
+    background: linear-gradient(135deg, var(--danger) 0%, #cc2244 100%);
     color: white;
+    border: 1px solid var(--danger);
 }
 
 .btn-danger:hover {
-    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(255, 68, 102, 0.5);
 }
 
 .btn-sm {
-    padding: 6px 12px;
+    padding: 8px 16px;
     font-size: 12px;
 }
 
 /* Forms */
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-weight: 500;
     color: var(--text);
 }
@@ -87,11 +104,14 @@ a:hover {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 10px;
+    padding: 12px 16px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     font-size: 14px;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    color: var(--text);
 }
 
 .form-group input:focus,
@@ -99,6 +119,7 @@ a:hover {
 .form-group textarea:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: var(--shadow-glow);
 }
 
 .form-row {
@@ -109,52 +130,58 @@ a:hover {
 
 /* Alerts */
 .alert {
-    padding: 12px 16px;
+    padding: 16px 20px;
     border-radius: var(--radius);
     margin-bottom: 16px;
     font-size: 14px;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
 }
 
 .alert-error {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+    background: rgba(255, 68, 102, 0.2);
+    color: #ff8888;
+    border: 1px solid rgba(255, 68, 102, 0.4);
 }
 
 .alert-success {
-    background: #dcfce7;
-    color: #16a34a;
-    border: 1px solid #bbf7d0;
+    background: rgba(0, 255, 136, 0.2);
+    color: #88ffaa;
+    border: 1px solid rgba(0, 255, 136, 0.4);
 }
 
 .alert-warning {
-    background: #fef3c7;
-    color: #d97706;
-    border: 1px solid #fde68a;
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffcc44;
+    border: 1px solid rgba(255, 170, 0, 0.4);
 }
 
 /* Badges */
 .badge {
     display: inline-block;
-    padding: 4px 8px;
-    border-radius: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 500;
+    backdrop-filter: blur(10px);
 }
 
 .badge-ACTIVE {
-    background: #dcfce7;
-    color: #16a34a;
+    background: rgba(0, 255, 136, 0.2);
+    color: #88ffaa;
+    border: 1px solid rgba(0, 255, 136, 0.4);
 }
 
 .badge-INACTIVE {
-    background: #fee2e2;
-    color: #dc2626;
+    background: rgba(255, 68, 102, 0.2);
+    color: #ff8888;
+    border: 1px solid rgba(255, 68, 102, 0.4);
 }
 
 .badge-PENDING {
-    background: #fef3c7;
-    color: #d97706;
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffcc44;
+    border: 1px solid rgba(255, 170, 0, 0.4);
 }
 
 /* Error Page */
