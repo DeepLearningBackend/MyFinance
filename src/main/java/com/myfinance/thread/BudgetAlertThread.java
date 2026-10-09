@@ -51,6 +51,10 @@ public class BudgetAlertThread implements Runnable {
                         System.out.println("WARNING: User " + user.getEmail() + " - " +
                             budget.getCategory() + " budget at 90%! " +
                             "Spent ₹" + budget.getSpentAmount() + " of ₹" + budget.getLimitAmount());
+                    } else if (usagePercent >= 70) {
+                        System.out.println("INFO: User " + user.getEmail() + " - " +
+                            budget.getCategory() + " budget at 70%! " +
+                            "Spent ₹" + budget.getSpentAmount() + " of ₹" + budget.getLimitAmount());
                     }
                 }
             }
