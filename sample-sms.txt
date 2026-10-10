@@ -1,0 +1,16 @@
+# Bank SMS Samples for Real-Time SMS Sync Innovation (MyFinance 2.0)
+
+# 1. State Bank of India (SBI)
+Your A/C ending 1234 debited by INR 450.00 on 09-Oct-26 via UPI transfer to Swiggy. UPI Ref: 123456789012 - SBI
+
+# 2. HDFC Bank
+Alert: Rs 780.00 debited from HDFC Bank A/C ending 5678 on 09-OCT-26 towards UBER. UPI: 112233445566.
+
+# 3. ICICI Bank
+ICICI Bank Acct XX123 debited with INR 2,400.00 on 09-Oct-26. Info: UPI/334455667788/Amazon Pay. Avbl Bal INR 15,200.
+
+# 4. Axis Bank
+Axis Bank: INR 620.00 debited from A/c no. XX789 on 09-10-26 to Starbucks. UPI Ref 556677889900.
+
+# 5. Fast Grocery / Blinkit Quick Checkout
+Sent Rs. 350.00 from HDFC Bank A/C 1234 to Blinkit on 09-10-26 via UPI txn 998877665544.

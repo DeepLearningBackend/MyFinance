@@ -1,76 +1,130 @@
-// Chart drawing functions using HTML5 Canvas API
+/**
+ * MyFinance 2.0 — Interactive Canvas Charts Engine
+ * Vanilla HTML5 Canvas drawing with retina display support and glowing dark-mode aesthetics.
+ */
 
-function drawDonutChart(canvasId, data, colors) {
+const CATEGORY_COLORS = {
+    "Food & Dining": "#f97316",
+    "Food": "#f97316",
+    "Dining": "#f97316",
+    "Shopping": "#ec4899",
+    "Transport & Fuel": "#06b6d4",
+    "Transport": "#06b6d4",
+    "Rent & Housing": "#8b5cf6",
+    "Housing": "#8b5cf6",
+    "Bills & Utilities": "#eab308",
+    "Utilities": "#eab308",
+    "Entertainment": "#a855f7",
+    "Health & Medical": "#ef4444",
+    "Health": "#ef4444",
+    "Education": "#3b82f6",
+    "Investment & Savings": "#10b981",
+    "Investment": "#10b981",
+    "Other": "#94a3b8"
+};
+
+/**
+ * Draws a sleek donut chart on an HTML5 canvas and populates a companion legend.
+ *
+ * @param {string} canvasId ID of the HTML canvas
+ * @param {string} legendId ID of the companion legend container
+ * @param {Object} data Key-value map of category -> amount
+ */
+function renderCategoryDonut(canvasId, legendId, data) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = Math.min(centerX, centerY) - 20;
-    const innerRadius = radius * 0.6;
+    const legend = document.getElementById(legendId);
 
-    let total = 0;
-    for (let key in data) {
-        total += data[key];
+    // Support High-DPI screens
+    const dpr = window.devicePixelRatio || 1;
+    const width = 220;
+    const height = 220;
+
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(dpr, dpr);
+
+    const entries = Object.entries(data || {}).filter(([_, val]) => val > 0);
+    const total = entries.reduce((sum, [_, val]) => sum + Number(val), 0);
+
+    if (total <= 0 || entries.length === 0) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '13px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No data available', width / 2, height / 2);
+        return;
     }
 
-    let startAngle = -Math.PI / 2;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = 90;
+    const innerRadius = 60;
 
-    for (let key in data) {
-        const sliceAngle = (data[key] / total) * 2 * Math.PI;
-        const endAngle = startAngle + sliceAngle;
+    let startAngle = -0.5 * Math.PI;
 
+    if (legend) legend.innerHTML = '';
+
+    entries.forEach(([category, amount]) => {
+        const val = Number(amount);
+        const sliceAngle = (val / total) * 2 * Math.PI;
+        const color = CATEGORY_COLORS[category] || '#a855f7';
+
+        // Draw Arc Slice
         ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+        ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
         ctx.closePath();
-        ctx.fillStyle = colors[key] || '#f4a261';
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 6;
         ctx.fill();
 
-        startAngle = endAngle;
-    }
+        // Slice separation line
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#0b0d17';
+        ctx.stroke();
 
-    // Draw inner circle to create donut effect
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-}
+        startAngle += sliceAngle;
 
-function drawBarChart(canvasId, labels, values, color) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
+        // Populate Legend
+        if (legend) {
+            const pct = ((val / total) * 100).toFixed(0);
+            const item = document.createElement('div');
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.justifyContent = 'space-between';
+            item.style.gap = '12px';
+            item.style.fontSize = '0.8rem';
+            item.style.color = '#e2e8f0';
 
-    const ctx = canvas.getContext('2d');
-    const padding = 40;
-    const chartWidth = canvas.width - padding * 2;
-    const chartHeight = canvas.height - padding * 2;
-
-    const maxValue = Math.max(...values);
-    const barWidth = chartWidth / values.length - 10;
-
-    // Draw axes
-    ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, canvas.height - padding);
-    ctx.lineTo(canvas.width - padding, canvas.height - padding);
-    ctx.strokeStyle = '#eaedf3';
-    ctx.stroke();
-
-    // Draw bars
-    values.forEach((value, index) => {
-        const barHeight = (value / maxValue) * chartHeight;
-        const x = padding + index * (chartWidth / values.length) + 5;
-        const y = canvas.height - padding - barHeight;
-
-        ctx.fillStyle = color || '#f4a261';
-        ctx.fillRect(x, y, barWidth, barHeight);
-
-        // Draw label
-        ctx.fillStyle = '#1e1e2e';
-        ctx.font = '12px Segoe UI';
-        ctx.textAlign = 'center';
-        ctx.fillText(labels[index], x + barWidth / 2, canvas.height - padding + 20);
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${color}; box-shadow: 0 0 6px ${color};"></span>
+                    <span style="font-weight: 500;">${category}</span>
+                </div>
+                <div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: #ffffff;">
+                    ₹${val.toLocaleString('en-IN')} <span style="font-size: 0.7rem; color: #94a3b8;">(${pct}%)</span>
+                </div>
+            `;
+            legend.appendChild(item);
+        }
     });
+
+    // Draw Center Summary Label
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TOTAL', centerX, centerY - 10);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Space Grotesk, sans-serif';
+    ctx.fillText('₹' + Math.round(total).toLocaleString('en-IN'), centerX, centerY + 8);
 }

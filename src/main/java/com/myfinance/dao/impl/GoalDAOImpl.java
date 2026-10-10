@@ -3,51 +3,78 @@ package com.myfinance.dao.impl;
 import com.myfinance.dao.interfaces.GoalDAO;
 import com.myfinance.model.Goal;
 import com.myfinance.util.DBConnection;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Raw JDBC implementation of {@link GoalDAO}.
+ * Manages savings progress, deadline updates, and milestone statuses.
+ */
 public class GoalDAOImpl implements GoalDAO {
 
     @Override
-    public void save(Goal goal) throws SQLException {
+    public boolean save(Goal goal) throws SQLException {
         String sql = "INSERT INTO goals (user_id, title, description, target_amount, saved_amount, deadline, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            pstmt.setInt(1, goal.getUserId());
-            pstmt.setString(2, goal.getTitle());
-            pstmt.setString(3, goal.getDescription());
-            pstmt.setDouble(4, goal.getTargetAmount());
-            pstmt.setDouble(5, goal.getSavedAmount());
-            pstmt.setDate(6, Date.valueOf(goal.getDeadline()));
-            pstmt.setString(7, goal.getStatus().name());
+            ps.setInt(1, goal.getUserId());
+            ps.setString(2, goal.getTitle());
+            ps.setString(3, goal.getDescription());
+            ps.setDouble(4, goal.getTargetAmount());
+            ps.setDouble(5, goal.getSavedAmount());
+            ps.setDate(6, Date.valueOf(goal.getDeadline()));
+            ps.setString(7, goal.getStatus() != null ? goal.getStatus().name() : Goal.GoalStatus.IN_PROGRESS.name());
 
-            int affectedRows = pstmt.executeUpdate();
-
+            int affectedRows = ps.executeUpdate();
             if (affectedRows > 0) {
-                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        goal.setId(generatedKeys.getInt(1));
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        goal.setId(rs.getInt(1));
                     }
                 }
+                return true;
             }
+            return false;
         }
     }
 
     @Override
     public Goal findById(int id) throws SQLException {
-        String sql = "SELECT * FROM goals WHERE id = ?";
-
+        String sql = "SELECT id, user_id, title, description, target_amount, saved_amount, deadline, status, created_at FROM goals WHERE id = ?";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            pstmt.setInt(1, id);
-            ResultSet rs = pstmt.executeQuery();
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRowToGoal(rs);
+                }
+            }
+        }
+        return null;
+    }
 
-            if (rs.next()) {
-                return mapResultSetToGoal(rs);
+    @Override
+    public Goal findByIdAndUserId(int id, int userId) throws SQLException {
+        String sql = "SELECT id, user_id, title, description, target_amount, saved_amount, deadline, status, created_at FROM goals WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRowToGoal(rs);
+                }
             }
         }
         return null;
@@ -55,114 +82,137 @@ public class GoalDAOImpl implements GoalDAO {
 
     @Override
     public List<Goal> findByUserId(int userId) throws SQLException {
-        String sql = "SELECT * FROM goals WHERE user_id = ?";
-        List<Goal> goals = new ArrayList<>();
-
+        String sql = "SELECT id, user_id, title, description, target_amount, saved_amount, deadline, status, created_at FROM goals WHERE user_id = ? ORDER BY status ASC, deadline ASC";
+        List<Goal> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            pstmt.setInt(1, userId);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                goals.add(mapResultSetToGoal(rs));
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRowToGoal(rs));
+                }
             }
         }
-        return goals;
+        return list;
     }
 
     @Override
-    public List<Goal> findByStatus(int userId, String status) throws SQLException {
-        String sql = "SELECT * FROM goals WHERE user_id = ? AND status = ?";
-        List<Goal> goals = new ArrayList<>();
-
+    public List<Goal> findByStatus(int userId, Goal.GoalStatus status) throws SQLException {
+        String sql = "SELECT id, user_id, title, description, target_amount, saved_amount, deadline, status, created_at " +
+                "FROM goals WHERE user_id = ? AND status = ? ORDER BY deadline ASC";
+        List<Goal> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            pstmt.setInt(1, userId);
-            pstmt.setString(2, status);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                goals.add(mapResultSetToGoal(rs));
+            ps.setInt(1, userId);
+            ps.setString(2, status.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRowToGoal(rs));
+                }
             }
         }
-        return goals;
-    }
-
-    @Override
-    public void updateSavedAmount(int goalId, double amount) throws SQLException {
-        String sql = "UPDATE goals SET saved_amount = saved_amount + ? WHERE id = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setDouble(1, amount);
-            pstmt.setInt(2, goalId);
-            pstmt.executeUpdate();
-        }
-    }
-
-    @Override
-    public void markAsAchieved(int goalId) throws SQLException {
-        String sql = "UPDATE goals SET status = 'ACHIEVED' WHERE id = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, goalId);
-            pstmt.executeUpdate();
-        }
+        return list;
     }
 
     @Override
     public List<Goal> findAll() throws SQLException {
-        String sql = "SELECT * FROM goals";
-        List<Goal> goals = new ArrayList<>();
-
+        String sql = "SELECT id, user_id, title, description, target_amount, saved_amount, deadline, status, created_at FROM goals ORDER BY id DESC";
+        List<Goal> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                goals.add(mapResultSetToGoal(rs));
+                list.add(mapRowToGoal(rs));
             }
         }
-        return goals;
+        return list;
     }
 
     @Override
-    public void update(Goal goal) throws SQLException {
-        String sql = "UPDATE goals SET title = ?, description = ?, target_amount = ?, saved_amount = ?, deadline = ?, status = ? WHERE id = ?";
-
+    public boolean update(Goal goal) throws SQLException {
+        String sql = "UPDATE goals SET title = ?, description = ?, target_amount = ?, saved_amount = ?, deadline = ?, status = ? " +
+                "WHERE id = ? AND user_id = ?";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, goal.getTitle());
-            pstmt.setString(2, goal.getDescription());
-            pstmt.setDouble(3, goal.getTargetAmount());
-            pstmt.setDouble(4, goal.getSavedAmount());
-            pstmt.setDate(5, Date.valueOf(goal.getDeadline()));
-            pstmt.setString(6, goal.getStatus().name());
-            pstmt.setInt(7, goal.getId());
+            ps.setString(1, goal.getTitle());
+            ps.setString(2, goal.getDescription());
+            ps.setDouble(3, goal.getTargetAmount());
+            ps.setDouble(4, goal.getSavedAmount());
+            ps.setDate(5, Date.valueOf(goal.getDeadline()));
+            ps.setString(6, goal.getStatus() != null ? goal.getStatus().name() : Goal.GoalStatus.IN_PROGRESS.name());
+            ps.setInt(7, goal.getId());
+            ps.setInt(8, goal.getUserId());
 
-            pstmt.executeUpdate();
+            return ps.executeUpdate() > 0;
         }
     }
 
     @Override
-    public void delete(int id) throws SQLException {
-        String sql = "DELETE FROM goals WHERE id = ?";
+    public boolean updateSavedAmount(int goalId, int userId, double additionalAmount) throws SQLException {
+        String selectSql = "SELECT target_amount, saved_amount FROM goals WHERE id = ? AND user_id = ?";
+        String updateSql = "UPDATE goals SET saved_amount = ?, status = ? WHERE id = ? AND user_id = ?";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection()) {
+            double currentSaved = 0.0;
+            double targetAmount = 0.0;
 
-            pstmt.setInt(1, id);
-            pstmt.executeUpdate();
+            try (PreparedStatement psSelect = conn.prepareStatement(selectSql)) {
+                psSelect.setInt(1, goalId);
+                psSelect.setInt(2, userId);
+                try (ResultSet rs = psSelect.executeQuery()) {
+                    if (rs.next()) {
+                        targetAmount = rs.getDouble("target_amount");
+                        currentSaved = rs.getDouble("saved_amount");
+                    } else {
+                        return false;
+                    }
+                }
+            }
+
+            double newSaved = Math.max(0.0, currentSaved + additionalAmount);
+            String newStatus = newSaved >= targetAmount ? Goal.GoalStatus.ACHIEVED.name() : Goal.GoalStatus.IN_PROGRESS.name();
+
+            try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
+                psUpdate.setDouble(1, newSaved);
+                psUpdate.setString(2, newStatus);
+                psUpdate.setInt(3, goalId);
+                psUpdate.setInt(4, userId);
+                return psUpdate.executeUpdate() > 0;
+            }
         }
     }
 
-    private Goal mapResultSetToGoal(ResultSet rs) throws SQLException {
+    @Override
+    public boolean markAsAchieved(int goalId, int userId) throws SQLException {
+        String sql = "UPDATE goals SET status = 'ACHIEVED' WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, goalId);
+            ps.setInt(2, userId);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    @Override
+    public boolean delete(int id, int userId) throws SQLException {
+        String sql = "DELETE FROM goals WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ps.setInt(2, userId);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    private Goal mapRowToGoal(ResultSet rs) throws SQLException {
         Goal goal = new Goal();
         goal.setId(rs.getInt("id"));
         goal.setUserId(rs.getInt("user_id"));
@@ -170,9 +220,25 @@ public class GoalDAOImpl implements GoalDAO {
         goal.setDescription(rs.getString("description"));
         goal.setTargetAmount(rs.getDouble("target_amount"));
         goal.setSavedAmount(rs.getDouble("saved_amount"));
-        goal.setDeadline(rs.getDate("deadline").toLocalDate());
-        goal.setStatus(Goal.GoalStatus.valueOf(rs.getString("status")));
-        goal.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+
+        Date d = rs.getDate("deadline");
+        if (d != null) {
+            goal.setDeadline(d.toLocalDate());
+        }
+
+        String st = rs.getString("status");
+        if (st != null) {
+            try {
+                goal.setStatus(Goal.GoalStatus.valueOf(st));
+            } catch (IllegalArgumentException e) {
+                goal.setStatus(Goal.GoalStatus.IN_PROGRESS);
+            }
+        }
+
+        Timestamp ts = rs.getTimestamp("created_at");
+        if (ts != null) {
+            goal.setCreatedAt(ts.toLocalDateTime());
+        }
         return goal;
     }
 }

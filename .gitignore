@@ -1,7 +1,13 @@
 # Database configuration with password
 src/main/resources/db.properties
+.env
 
-# Maven
+# Local / H2 embedded database files
+myfinancedb_local*
+*.mv.db
+*.trace.db
+
+# Maven & Build outputs
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -12,6 +18,13 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+
+# Embedded Tomcat & Logs
+tomcat.8080/
+*.log
+
+# Workspace & Temp
+files.txt
 
 # IDE
 .idea/
@@ -29,3 +42,6 @@ Thumbs.db
 
 # Tomcat
 *.war
+
+# Project Context
+PROJECT_CONTEXT.md

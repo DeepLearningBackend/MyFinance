@@ -1,159 +1,78 @@
-// Frontend form validation
+/**
+ * MyFinance 2.0 — Client-Side Form Validation & UX Enhancements
+ */
 
-function validateExpenseForm(form) {
-    const title = form.querySelector('[name="title"]').value.trim();
-    const amount = parseFloat(form.querySelector('[name="amount"]').value);
-    const category = form.querySelector('[name="category"]').value;
-    const expenseDate = form.querySelector('[name="expenseDate"]').value;
-
-    clearErrors(form);
-
-    let isValid = true;
-
-    if (!title) {
-        showError(form, 'title', 'Title is required');
-        isValid = false;
-    }
-
-    if (isNaN(amount) || amount <= 0) {
-        showError(form, 'amount', 'Amount must be greater than 0');
-        isValid = false;
-    }
-
-    if (!category) {
-        showError(form, 'category', 'Category is required');
-        isValid = false;
-    }
-
-    if (!expenseDate) {
-        showError(form, 'expenseDate', 'Date is required');
-        isValid = false;
-    }
-
-    return isValid;
-}
-
-function validateBudgetForm(form) {
-    const category = form.querySelector('[name="category"]').value;
-    const limitAmount = parseFloat(form.querySelector('[name="limitAmount"]').value);
-    const startDate = form.querySelector('[name="startDate"]').value;
-    const endDate = form.querySelector('[name="endDate"]').value;
-
-    clearErrors(form);
-
-    let isValid = true;
-
-    if (!category) {
-        showError(form, 'category', 'Category is required');
-        isValid = false;
-    }
-
-    if (isNaN(limitAmount) || limitAmount <= 0) {
-        showError(form, 'limitAmount', 'Limit amount must be greater than 0');
-        isValid = false;
-    }
-
-    if (!startDate) {
-        showError(form, 'startDate', 'Start date is required');
-        isValid = false;
-    }
-
-    if (!endDate) {
-        showError(form, 'endDate', 'End date is required');
-        isValid = false;
-    }
-
-    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-        showError(form, 'endDate', 'End date must be after start date');
-        isValid = false;
-    }
-
-    return isValid;
-}
-
-function validateGoalForm(form) {
-    const title = form.querySelector('[name="title"]').value.trim();
-    const targetAmount = parseFloat(form.querySelector('[name="targetAmount"]').value);
-    const deadline = form.querySelector('[name="deadline"]').value;
-
-    clearErrors(form);
-
-    let isValid = true;
-
-    if (!title) {
-        showError(form, 'title', 'Title is required');
-        isValid = false;
-    }
-
-    if (isNaN(targetAmount) || targetAmount <= 0) {
-        showError(form, 'targetAmount', 'Target amount must be greater than 0');
-        isValid = false;
-    }
-
-    if (!deadline) {
-        showError(form, 'deadline', 'Deadline is required');
-        isValid = false;
-    }
-
-    if (deadline && new Date(deadline) < new Date()) {
-        showError(form, 'deadline', 'Deadline must be in the future');
-        isValid = false;
-    }
-
-    return isValid;
-}
-
-function showError(form, fieldName, message) {
-    const input = form.querySelector(`[name="${fieldName}"]`);
-    if (!input) return;
-
-    let errorDiv = input.nextElementSibling;
-    if (!errorDiv || !errorDiv.classList.contains('error-message')) {
-        errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.style.cssText = 'color: #ef4444; font-size: 12px; margin-top: 4px;';
-        input.parentNode.insertBefore(errorDiv, input.nextSibling);
-    }
-
-    errorDiv.textContent = message;
-    input.style.borderColor = '#ef4444';
-}
-
-function clearErrors(form) {
-    const errorMessages = form.querySelectorAll('.error-message');
-    errorMessages.forEach(msg => msg.remove());
-
-    const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.style.borderColor = '#eaedf3';
-    });
-}
-
-// Add validation to forms on page load
 document.addEventListener('DOMContentLoaded', () => {
-    const expenseForm = document.querySelector('form[action*="expenses"]');
+    // Expense Form Validation
+    const expenseForm = document.getElementById('expenseForm');
     if (expenseForm) {
         expenseForm.addEventListener('submit', (e) => {
-            if (!validateExpenseForm(expenseForm)) {
+            const amountInput = expenseForm.querySelector('input[name="amount"]');
+            const titleInput = expenseForm.querySelector('input[name="title"]');
+
+            if (titleInput && titleInput.value.trim().length === 0) {
                 e.preventDefault();
+                alert('Please enter a description or vendor title for this expense.');
+                titleInput.focus();
+                return;
+            }
+
+            if (amountInput && (Number(amountInput.value) <= 0 || isNaN(amountInput.value))) {
+                e.preventDefault();
+                alert('Please enter a positive expense amount greater than ₹0.');
+                amountInput.focus();
+                return;
             }
         });
     }
 
-    const budgetForm = document.querySelector('form[action*="budgets"]');
+    // Budget Form Validation
+    const budgetForm = document.getElementById('budgetForm');
     if (budgetForm) {
         budgetForm.addEventListener('submit', (e) => {
-            if (!validateBudgetForm(budgetForm)) {
+            const limitInput = budgetForm.querySelector('input[name="limitAmount"]');
+            const startInput = budgetForm.querySelector('input[name="startDate"]');
+            const endInput = budgetForm.querySelector('input[name="endDate"]');
+
+            if (limitInput && Number(limitInput.value) <= 0) {
                 e.preventDefault();
+                alert('Budget limit must be greater than ₹0.');
+                limitInput.focus();
+                return;
+            }
+
+            if (startInput && endInput && startInput.value > endInput.value) {
+                e.preventDefault();
+                alert('Budget start date cannot be after the end date.');
+                endInput.focus();
+                return;
             }
         });
     }
 
-    const goalForm = document.querySelector('form[action*="goals"]');
+    // Goal Form Validation
+    const goalForm = document.getElementById('goalForm');
     if (goalForm) {
         goalForm.addEventListener('submit', (e) => {
-            if (!validateGoalForm(goalForm)) {
+            const targetInput = goalForm.querySelector('input[name="targetAmount"]');
+            const deadlineInput = goalForm.querySelector('input[name="deadline"]');
+
+            if (targetInput && Number(targetInput.value) <= 0) {
                 e.preventDefault();
+                alert('Target savings goal amount must be positive.');
+                targetInput.focus();
+                return;
+            }
+
+            if (deadlineInput && deadlineInput.value) {
+                const today = new Date().toISOString().split('T')[0];
+                if (deadlineInput.value < today) {
+                    if (!confirm('The selected deadline date is in the past. Do you still wish to proceed?')) {
+                        e.preventDefault();
+                        deadlineInput.focus();
+                        return;
+                    }
+                }
             }
         });
     }

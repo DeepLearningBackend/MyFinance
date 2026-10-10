@@ -1,95 +1,221 @@
-/* Tablet */
+/* ==========================================================================
+   MYFINANCE 2.0 — RESPONSIVE.CSS
+   Breakpoints: 1280px (desktop), 768px (tablet/mobile), 375px (small mobile)
+   ========================================================================== */
+
+/* ── TABLET (1024px) ─────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-    .form-row {
-        grid-template-columns: 1fr;
-    }
+  .grid-two-col,
+  .grid-main-side {
+    grid-template-columns: 1fr;
+  }
+
+  .content-body {
+    padding: 24px;
+  }
 }
 
-/* Mobile */
+/* ── MOBILE (≤ 768px) ────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .sidebar {
-        display: none;
-    }
+  /* Sidebar slides off-canvas; main content fills 100% width */
+  .app-wrapper {
+    display: block; /* stack instead of flex so sidebar doesn't reserve space */
+  }
 
-    .sidebar.open {
-        display: flex;
-        position: fixed;
-        z-index: 999;
-    }
+  .app-sidebar {
+    position: fixed !important;
+    left: -300px !important;  /* off-screen by default */
+    top: 0;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    flex: none !important;
+    height: 100vh !important;
+    z-index: 1100;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 
-    .main-content {
-        margin-left: 0;
-    }
+  .app-sidebar.open {
+    left: 0 !important;
+  }
 
-    .topbar {
-        padding: 16px;
-    }
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
+  }
 
-    .stats-grid {
-        grid-template-columns: 1fr 1fr;
-        padding: 16px;
-    }
+  .sidebar-backdrop.active {
+    display: block !important;
+  }
 
-    .section {
-        padding: 16px;
-    }
+  /* Show hamburger on mobile */
+  .hamburger-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
 
-    .budgets-grid,
-    .goals-grid {
-        grid-template-columns: 1fr;
-    }
+  .app-topbar {
+    padding: 0 16px;
+  }
 
-    .auth-container {
-        flex-direction: column;
-    }
+  /* Main takes full width since sidebar is position:fixed */
+  .app-main {
+    width: 100% !important;
+    min-width: 100% !important;
+    /* Pad bottom so content isn't hidden behind the mobile bottom nav */
+    padding-bottom: 72px !important;
+  }
 
-    .auth-left {
-        display: none;
-    }
+  .content-body {
+    padding: 16px;
+  }
 
-    .auth-right {
-        padding: 20px;
-    }
+  /* Auth pages */
+  .auth-container {
+    flex-direction: column;
+  }
 
-    .filter-form {
-        flex-direction: column;
-    }
+  .auth-hero {
+    display: none;
+  }
 
-    .expense-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
+  .auth-form-column {
+    padding: 24px 16px;
+  }
 
-    .expense-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
+  /* ── MOBILE BOTTOM NAV ─────────────────────────────────────────────────── */
+  /*  RULE 1: Only visible on ≤ 768px — controlled entirely here              */
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 64px !important;
+    background: rgba(14, 18, 34, 0.97);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1000 !important;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 4px;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.72rem;
+    gap: 4px;
+    flex: 1;
+    padding: 6px 0;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-nav-item.active,
+  .mobile-nav-item:hover {
+    color: var(--primary-light, #c084fc);
+  }
+
+  .mobile-nav-icon {
+    font-size: 1.15rem;
+  }
 }
 
-/* Small Mobile */
+/* ── DESKTOP — mobile bottom nav MUST be hidden ──────────────────────────── */
+@media (min-width: 769px) {
+  .mobile-bottom-nav {
+    display: none !important;
+    position: static !important;
+  }
+
+  /* Restore sidebar to sticky desktop layout */
+  .app-wrapper {
+    display: flex !important;
+  }
+
+  .app-sidebar {
+    position: sticky !important;
+    left: 0 !important;
+    flex: 0 0 260px !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+  }
+
+  .app-main {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: auto !important;
+    padding-bottom: 0 !important;
+  }
+
+  .hamburger-btn {
+    display: none !important;
+  }
+
+  .sidebar-backdrop {
+    display: none !important;
+  }
+}
+
+/* ── SMALL MOBILE (≤ 480px) ─────────────────────────────────────────────── */
 @media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .form-row {
-        grid-template-columns: 1fr;
-    }
+  .glass-card {
+    padding: 18px 14px;
+  }
 
-    .table-container {
-        overflow-x: auto;
-    }
+  .stat-value {
+    font-size: 1.45rem;
+  }
 
-    .auth-card {
-        padding: 24px;
-    }
+  .topbar-page-title {
+    font-size: 1.15rem;
+  }
 
-    .insight-card {
-        margin: 0 16px 16px;
-    }
+  .insight-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ── 375px (iPhone SE) ──────────────────────────────────────────────────── */
+@media (max-width: 390px) {
+  .content-body {
+    padding: 12px;
+  }
+
+  .mobile-nav-item {
+    font-size: 0.65rem;
+  }
+
+  .mobile-nav-icon {
+    font-size: 1rem;
+  }
+
+  .app-topbar {
+    padding: 0 12px;
+  }
 }

@@ -1,971 +1,606 @@
-# MyFinance — Online Personal Finance Management Platform
+# MyFinance 2.0
 
-## Complete Build Guide (README + Step-by-Step)
+MyFinance is a personal finance web application built with Java Servlets, JSP, JDBC and MySQL. Most expense trackers show what has already been spent. MyFinance warns the user before an expense is saved, so the budget check happens before the money is gone.
 
----
+The target users are young working professionals who pay through UPI and cash and want a simple view of where their money goes.
 
-## 📌 README — What We Are Building
-
-### Project Name
-
-**MyFinance** — Online Personal Finance Management Platform
-
-### Project Goal
-
-Build a web-based personal finance management platform where:
-
-- **Users** can track expenses, create budgets, and manage financial goals
-- **Admins** can manage user accounts, financial data security, and system settings
-
-### Who Is This For?
-
-Anyone who wants to manage their personal finances — track where their money goes, set monthly budgets per category, and work towards financial goals like saving for a vacation, a home, or education.
-
-### Why Are We Building This?
-
-- Mint (the world's biggest finance app, 20M+ users) shut down in 2024
-- Existing apps are complex, privacy-invasive, and not built for Indian users
-- We are building a simple, private, goal-driven platform from scratch
-
-### What Makes Ours Different (Innovations)
-
-1. Smart budget alerts — warns you at 70%, 90%, 100% BEFORE you overspend
-2. Goal motivation engine — deadline countdown + milestone badges
-3. Privacy-first — no SMS access, no data selling, transparent policy
-4. Plain insight cards — one sentence tip per week, not complex dashboards
-5. Category auto-suggest — type "Swiggy" → auto tags as Food
-6. Offline expense entry — add expenses without internet, sync when connected
+MyFinance 2.0 is a team project developed by four members.
 
 ---
 
-## 🛠️ Tech Stack
+## Contents
 
-| Layer | Technology |
-| --- | --- |
-| Backend | Java Servlets + Apache Tomcat 10 |
-| Frontend | JSP + HTML5 + CSS3 (Responsive) |
-| Database | MySQL 8.0 + Raw JDBC |
-| Security | HttpSession + BCrypt password hashing |
-| Build Tool | Maven |
-| IDE | IntelliJ IDEA / Eclipse |
-
----
-
-## 📋 Marking Rubric Map
-
-| Criteria | Marks | Where It Appears In Code |
-| --- | --- | --- |
-| Problem Understanding & Design | 8 | ER diagram, flow, project report |
-| Core Java Concepts | 10 | Model classes, services, threads |
-| Database Integration (JDBC) | 8 | DAOImpl classes, raw SQL queries |
-| Servlets & Web Integration | 7 | Servlet classes, JSP pages |
-| **Total** | **33** |  |
+1. [Features](#features)
+2. [Problems addressed](#problems-addressed)
+3. [Technology and requirements](#technology-and-requirements)
+4. [Installation and running](#installation-and-running)
+5. [Feature walkthrough](#feature-walkthrough)
+6. [SMS sync with a phone](#sms-sync-with-a-phone)
+7. [Project structure](#project-structure)
+8. [Database design](#database-design)
+9. [Java concepts used](#java-concepts-used)
+10. [JDBC and data access](#jdbc-and-data-access)
+11. [Servlets and web layer](#servlets-and-web-layer)
+12. [Security and coding rules](#security-and-coding-rules)
+13. [Testing](#testing)
+14. [Known limitations](#known-limitations)
+15. [Possible improvements](#possible-improvements)
 
 ---
 
-## 📁 Final Project Structure
+## Features
+
+**Expense tracking.** Users log digital expenses with a title, amount, category and date, and can filter them by category, month and year. When a title such as "Swiggy" or "Uber" is typed, the category is suggested automatically from a keyword list.
+
+**Spend Guard.** Before an expense is saved, the server checks the budget for its category. At 80% of the limit or more, a warning is shown. Above 100%, the warning turns red. The message includes the calculation, for example `250 spent + 250 new = 500 of 200 limit`, and the user chooses Cancel or Log Anyway. This applies to manual expenses and to expenses confirmed from SMS.
+
+**Budgets.** Each budget has a category, a limit and a date range. Cards show progress bars, the remaining amount (negative when overspent) and an alert banner while a budget is near or over its limit.
+
+**Savings goals.** Goals have a target amount, a deadline, a progress bar and milestone badges. Adding savings updates the progress, and a goal becomes Achieved automatically when the saved amount reaches the target.
+
+**Cash tracker.** Cash spending is stored separately from digital spending. The user sets cash in hand, each cash expense reduces it automatically, and a month-end reconciliation compares the expected balance with the actual one.
+
+**Daily allowance.** The dashboard shows how much can still be spent per day:
 
 ```
-MyFinance/
-├── src/main/java/com/myfinance/
-│   ├── model/
-│   │   ├── BaseEntity.java          ← Abstract class (Inheritance)
-│   │   ├── User.java                ← Extends BaseEntity
-│   │   ├── Expense.java             ← Extends BaseEntity
-│   │   ├── Budget.java              ← Extends BaseEntity
-│   │   ├── Goal.java                ← Extends BaseEntity
-│   │   └── Category.java
-│   │
-│   ├── dao/
-│   │   ├── interfaces/
-│   │   │   ├── UserDAO.java         ← Interface (Interfaces rubric)
-│   │   │   ├── ExpenseDAO.java
-│   │   │   ├── BudgetDAO.java
-│   │   │   └── GoalDAO.java
-│   │   └── impl/
-│   │       ├── UserDAOImpl.java     ← Raw JDBC (8 JDBC marks)
-│   │       ├── ExpenseDAOImpl.java
-│   │       ├── BudgetDAOImpl.java
-│   │       └── GoalDAOImpl.java
-│   │
-│   ├── service/
-│   │   ├── AuthService.java         ← Login/register logic
-│   │   ├── ExpenseService.java      ← Collections & Generics here
-│   │   ├── BudgetService.java       ← Budget alert logic
-│   │   ├── GoalService.java         ← Progress calculation
-│   │   └── InsightService.java      ← Weekly tip generation
-│   │
-│   ├── servlet/
-│   │   ├── AuthServlet.java         ← /login, /register (Servlets rubric)
-│   │   ├── DashboardServlet.java    ← /dashboard
-│   │   ├── ExpenseServlet.java      ← /expenses
-│   │   ├── BudgetServlet.java       ← /budgets
-│   │   ├── GoalServlet.java         ← /goals
-│   │   └── admin/
-│   │       ├── AdminDashServlet.java
-│   │       ├── UserMgmtServlet.java
-│   │       ├── SecurityServlet.java
-│   │       └── SettingsServlet.java
-│   │
-│   ├── thread/
-│   │   └── BudgetAlertThread.java   ← implements Runnable (Multithreading)
-│   │
-│   ├── exception/
-│   │   ├── DatabaseException.java   ← Custom exception (Exception Handling)
-│   │   └── ValidationException.java
-│   │
-│   └── util/
-│       ├── DBConnection.java        ← JDBC connection
-│       ├── PasswordUtil.java        ← BCrypt hashing
-│       ├── SessionUtil.java         ← Session helper
-│       └── CategoryMapper.java      ← Auto-suggest logic
-│
-├── src/main/webapp/
-│   ├── WEB-INF/
-│   │   └── web.xml                  ← Servlet mappings
-│   ├── css/
-│   │   ├── global.css               ← Base + variables
-│   │   ├── auth.css                 ← Login/Register pages
-│   │   ├── dashboard.css            ← Dashboard layout
-│   │   └── responsive.css           ← Mobile breakpoints
-│   ├── js/
-│   │   ├── charts.js                ← Pie/bar chart (Canvas API)
-│   │   ├── offline.js               ← Offline expense queue
-│   │   └── validation.js            ← Frontend form checks
-│   └── jsp/
-│       ├── auth/
-│       │   ├── login.jsp
-│       │   └── register.jsp
-│       ├── user/
-│       │   ├── dashboard.jsp
-│       │   ├── expenses.jsp
-│       │   ├── budgets.jsp
-│       │   └── goals.jsp
-│       └── admin/
-│           ├── admin-dashboard.jsp
-│           ├── user-management.jsp
-│           ├── security.jsp
-│           └── settings.jsp
-│
-├── pom.xml
-└── database/
-    └── schema.sql                   ← All CREATE TABLE statements
+(total budget limits − spending in budgeted categories) ÷ days left in the month
+```
+
+When the user is over budget, the value is negative and shown in red instead of being hidden as zero. The formula is shown with real numbers on the card.
+
+**Weekly insight.** A short plain-English tip on the dashboard, based on recent spending trends.
+
+**Spending personality.** The application scores seven spending personalities (Planner, Foodie, Impulsive Shopper, Commuter, Explorer, Experience Seeker and Wellness Warrior) from the last 30 days of expenses, using category shares and weekend spending. The result is shown with a transparent score breakdown. It needs expense data on at least 7 different days (the `personality_min_days` admin setting).
+
+**FinCoach.** A chat page with two modes. Questions about the user's own money are answered from the database and labelled "Your data". General finance questions are sent to the Gemini API with a SEBI disclaimer and labelled "AI". Personal numbers are never sent to Gemini.
+
+**SMS sync.** Bank debit messages are forwarded from an Android phone to the server. The server reads the amount, merchant and UPI reference and asks the user to confirm. An expense is created only after the user confirms.
+
+**Offline queue.** If the connection is lost, expenses entered in the browser are kept in local storage and sent later.
+
+**Profile.** Users can update their monthly income and cash baseline and regenerate their personal API token (used by SMS sync).
+
+**Administration.** An admin console offers an overview with counters and recent audit logs, user management (search, role change, status change, delete), a security page with an audit history, and system settings (platform name, currency, feature switches). Every admin change is written to the audit log.
+
+---
+
+## Problems addressed
+
+| Problem | How the application handles it |
+|---|---|
+| Spending is visible only after it happened | Spend Guard warns before the expense is saved |
+| Entering every expense by hand is tedious | Category suggestions and SMS sync with one-tap confirmation |
+| Cash spending is missing from bank-based apps | Separate cash tracker with a month-end reconciliation |
+| Users do not know what they can spend today | Daily allowance with the formula shown |
+| AI money advice can be wrong or unsafe | FinCoach keeps personal numbers out of the AI and adds a disclaimer |
+| Users do not understand their habits | Spending personality built from real data |
+
+### User flow
+
+```mermaid
+flowchart TD
+    A[Register and log in] --> B[Set a budget per category]
+    B --> C{Add an expense}
+    C -->|Manual form| D[Spend Guard checks the budget]
+    C -->|SMS from phone| E[Confirmation prompt]
+    E -->|User taps Confirm| D
+    D -->|Within limit| F[Expense saved]
+    D -->|Near or over limit| G[Warning shown, user chooses]
+    G -->|Log Anyway| F
+    F --> H[Dashboard: allowance, budget banner, charts]
+    H --> I[FinCoach and spending personality]
 ```
 
 ---
 
-## 🗄️ Database Schema
+## Technology and requirements
 
-```sql
--- Users table
-CREATE TABLE users (
-    id          INT PRIMARY KEY AUTO_INCREMENT,
-    name        VARCHAR(100) NOT NULL,
-    email       VARCHAR(100) UNIQUE NOT NULL,
-    password    VARCHAR(255) NOT NULL,
-    role        ENUM('USER','ADMIN') DEFAULT 'USER',
-    status      ENUM('ACTIVE','INACTIVE','PENDING') DEFAULT 'ACTIVE',
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+| Part | Technology |
+|---|---|
+| Language | Java 17 |
+| Web layer | Jakarta Servlet 6.0 and JSP with JSTL |
+| Data access | Plain JDBC with the DAO pattern (MySQL Connector/J 8.0.33) |
+| Database | MySQL 8.0 |
+| Passwords and sessions | BCrypt (jBCrypt 0.4) and HttpSession |
+| JSON | org.json |
+| Background work | Java threads (`Runnable`) |
+| Frontend | HTML, CSS, vanilla JavaScript, Canvas API for charts |
+| AI (optional) | Google Gemini API |
+| Build | Maven (WAR packaging) |
+| Server | Embedded Apache Tomcat 10.1, started from `AppServer.java` |
+| Tests | JUnit 5 |
 
--- Expenses table
-CREATE TABLE expenses (
-    id          INT PRIMARY KEY AUTO_INCREMENT,
-    user_id     INT NOT NULL,
-    title       VARCHAR(150) NOT NULL,
-    amount      DECIMAL(10,2) NOT NULL,
-    category    VARCHAR(50) NOT NULL,
-    expense_date DATE NOT NULL,
-    description TEXT,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+Required software:
 
--- Budgets table
-CREATE TABLE budgets (
-    id            INT PRIMARY KEY AUTO_INCREMENT,
-    user_id       INT NOT NULL,
-    category      VARCHAR(50) NOT NULL,
-    limit_amount  DECIMAL(10,2) NOT NULL,
-    spent_amount  DECIMAL(10,2) DEFAULT 0.00,
-    start_date    DATE NOT NULL,
-    end_date      DATE NOT NULL,
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+- JDK 17
+- Maven 3.x
+- MySQL 8.0 and MySQL Workbench (or the `mysql` command line)
 
--- Goals table
-CREATE TABLE goals (
-    id            INT PRIMARY KEY AUTO_INCREMENT,
-    user_id       INT NOT NULL,
-    title         VARCHAR(150) NOT NULL,
-    description   TEXT,
-    target_amount DECIMAL(10,2) NOT NULL,
-    saved_amount  DECIMAL(10,2) DEFAULT 0.00,
-    deadline      DATE NOT NULL,
-    status        ENUM('IN_PROGRESS','ACHIEVED','FAILED') DEFAULT 'IN_PROGRESS',
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+Optional:
 
--- System settings table
-CREATE TABLE system_settings (
-    id            INT PRIMARY KEY AUTO_INCREMENT,
-    setting_key   VARCHAR(100) UNIQUE NOT NULL,
-    setting_value VARCHAR(255) NOT NULL,
-    updated_by    INT,
-    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (updated_by) REFERENCES users(id)
-);
+- A Gemini API key, for the AI mode of FinCoach
+- An Android phone with the MacroDroid app, for live SMS sync
 
--- Audit logs table
-CREATE TABLE audit_logs (
-    id          INT PRIMARY KEY AUTO_INCREMENT,
-    admin_id    INT NOT NULL,
-    action      VARCHAR(255) NOT NULL,
-    target_user INT,
-    timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (admin_id) REFERENCES users(id)
-);
-
--- Default admin account (password: admin123)
-INSERT INTO users (name, email, password, role, status)
-VALUES ('Admin', 'admin@myfinance.com',
-'$2a$12$hashedpasswordhere', 'ADMIN', 'ACTIVE');
-
--- Default system settings
-INSERT INTO system_settings (setting_key, setting_value) VALUES
-('platform_name', 'MyFinance'),
-('default_currency', 'INR'),
-('session_timeout', '30'),
-('max_login_attempts', '5'),
-('budget_alerts_enabled', 'true'),
-('email_reports_enabled', 'true');
-```
+A separate Tomcat installation is not needed.
 
 ---
 
-# 🚀 STEP-BY-STEP BUILD PROCESS
+## Installation and running
+
+**Step 1. Get the code**
+
+```
+git clone https://github.com/DeepLearningBackend/MyFinance.git
+cd MyFinance
+```
+
+**Step 2. Create the database**
+
+Start MySQL and run the schema file. It creates the `myfinancedb` database and its 9 tables.
+
+```
+mysql -u root -p < database/schema.sql
+```
+
+The file can also be opened and run in MySQL Workbench. Afterwards `myfinancedb` contains 9 tables.
+
+Note: the script drops and recreates all 9 tables (`DROP TABLE IF EXISTS`), so any existing data in them is deleted. It also inserts the default system settings and one admin account (see Step 5).
+
+**Step 3. Set the environment variables**
+
+Database settings and the Gemini key are read from environment variables, so no secrets are stored in the code. Set them in the same terminal that will start the server.
+
+Windows (PowerShell):
+
+```
+$env:DB_PASS="your-mysql-password"
+$env:GEMINI_API_KEY="your-gemini-key"
+```
+
+Linux or macOS:
+
+```
+export DB_PASS="your-mysql-password"
+export GEMINI_API_KEY="your-gemini-key"
+```
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `DB_URL` | JDBC URL of the MySQL database | `jdbc:mysql://localhost:3306/myfinancedb` with `useSSL=false`, `allowPublicKeyRetrieval=true`, `serverTimezone=Asia/Kolkata` and UTF-8 |
+| `DB_USER` | MySQL user | `root` |
+| `DB_PASS` | MySQL password | empty, so set it if the MySQL user has a password |
+| `GEMINI_API_KEY` | Key for the AI mode of FinCoach | none, FinCoach then answers general questions with a built-in educational text |
+
+The application connects to MySQL only. If MySQL is not running or the password is wrong, it stops with an error message that says what to check.
+
+**Step 4. Start the application**
+
+```
+mvn exec:java
+```
+
+This starts the embedded Tomcat from `com.myfinance.AppServer` on port 8080 with the context path `/myfinance`. The `main` method of `AppServer.java` can also be run directly from an IDE. The console prints the local address and the Wi-Fi address of the machine.
+
+Open:
+
+```
+http://localhost:8080/myfinance/auth
+```
+
+**Step 5. Log in**
+
+- To use the application as a normal user, register a new account on the login page.
+- To open the admin console, log in with the account created by `schema.sql`: `admin@myfinance.com` with password `admin123`. These credentials are for local demonstration only.
+
+**Step 6. Run the tests**
+
+```
+mvn clean test
+```
+
+The tests run on a temporary embedded H2 database that Maven enables automatically (`DB_FALLBACK=true`), so they never touch the data in MySQL. The running application itself never uses H2.
+
+**Optional: build a WAR file**
+
+```
+mvn clean package
+```
+
+This creates `target/myfinance.war`, which can be deployed to a Tomcat 10.1 server.
 
 ---
 
-## PHASE 0 — Setup & Environment (Do This First)
+## Feature walkthrough
 
-### Step 0.1 — Install Required Software
+These steps show each feature on the running website. The menu names match the application sidebar.
 
-```
-1. Install Java JDK 17+         → https://adoptium.net
-2. Install Apache Tomcat 10.1   → https://tomcat.apache.org
-3. Install MySQL 8.0            → https://dev.mysql.com
-4. Install Maven 3.9+           → https://maven.apache.org
-5. Install IntelliJ IDEA        → https://jetbrains.com/idea
-6. Install MySQL Workbench      → for DB management (optional)
-```
+**1. Register and log in**
+1. Open `http://localhost:8080/myfinance/auth` and register a new account.
+2. Log in. The dashboard opens.
 
-### Step 0.2 — Create Maven Project
+**2. Budgets**
+1. Open **Budgets** and create a budget for Food & Dining with a limit of 200 and a date range that includes today.
+2. The budget appears as a card with a progress bar.
 
-```
-In IntelliJ → New Project → Maven Archetype
-GroupId:    com.myfinance
-ArtifactId: myfinance
-Version:    1.0-SNAPSHOT
-Archetype:  maven-archetype-webapp
-```
+**3. Expenses, category suggestion and Spend Guard**
+1. Open **Expenses**. Type a title such as "Swiggy". The category Food & Dining is suggested.
+2. Add the expense with an amount of 250.
+3. A red warning appears with the calculation `0 spent + 250 new = 250 of 200 limit`.
+4. Choose **Cancel** to stop, or **Log Anyway** to save it.
+5. After saving, the dashboard and the Budgets page show a banner such as `200 budget − 250 spent = −50 (over limit)`. It stays visible on every page load until the budget is back under its limit.
 
-### Step 0.3 — Setup pom.xml
+**4. Daily allowance**
+1. Open the **Dashboard**.
+2. The "Left to spend today" card shows the daily amount with its formula. A negative value means the budgets are exceeded. Spending in categories without a budget is shown on a separate line.
 
-Add these dependencies:
+**5. SMS sync**
+1. Open **Expenses** and find the SMS paste box.
+2. Paste this message and submit:
+   ```
+   Rs 250.00 debited from A/c XX1234 via UPI to Zomato. Ref 412398765432
+   ```
+3. Within a few seconds a confirmation prompt appears (and the Expenses page lists it under "Mobile SMS Live Sync") with the amount, merchant and UPI reference.
+4. Click **Confirm**. Spend Guard runs first if the category has a budget, and the expense then appears in the expense list. **Dismiss** rejects the message instead.
+5. For live sync from a phone, see [SMS sync with a phone](#sms-sync-with-a-phone).
 
-- javax.servlet-api 6.0.0 (scope: provided)
-- mysql-connector-java 8.0.33
-- jbcrypt 0.4 (password hashing)
-- jstl 2.0 (JSP tag library)
-- junit 5.9.3 (testing)
+**6. Cash tracker**
+1. Open **Cash Tracker** and set the cash in hand.
+2. Add a cash expense. The cash in hand decreases automatically.
+3. Use the reconciliation tool at the end of the month to compare the expected and actual balance.
 
-### Step 0.4 — Create MySQL Database
+**7. Goals**
+1. Open **Goals** and create a goal with a target amount and a deadline.
+2. Add savings. The progress bar moves, and the goal becomes Achieved when the saved amount reaches the target.
 
-```sql
-CREATE DATABASE myfinancedb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE myfinancedb;
--- then run schema.sql
-```
+**8. Spending personality**
+1. Open **My Personality**.
+2. With expenses on at least 7 different days in the last 30 days, the page reveals the personality with its score breakdown. With less data, it asks for more.
 
----
+**9. FinCoach**
+1. Open **FinCoach AI**. Suggestion chips offer example questions.
+2. Ask a personal question, such as "How much have I spent on food?". The answer comes from the database and is labelled "Your data".
+3. Ask a general question, such as "What is a SIP?". With a Gemini key, the answer is labelled "AI" and includes the SEBI disclaimer.
 
-## PHASE 1 — Foundation Layer (Database + Connection)
+**10. Profile**
+1. Open **Profile & Sync** to change the monthly income and cash baseline.
+2. The page shows the API token used for SMS sync (with Copy and Regenerate buttons), the webhook address and an example `curl` command.
 
-### Step 1.1 — Create DBConnection.java
-
-**Purpose:** Single class to manage JDBC connection to MySQL **What to write:**
-
-- Static method getConnection() returning Connection
-- URL, USER, PASS as private constants
-- Load MySQL driver with Class.forName()
-- Handle SQLException with custom DatabaseException
-
-**Prompt to use:**
-
-> "Write DBConnection.java in package com.myfinance.util that creates a JDBC connection to MySQL database 'myfinancedb' on localhost:3306. Include getConnection() static method, constants for URL/USER/PASS, and throw DatabaseException on failure."
-
-### Step 1.2 — Create DatabaseException.java and ValidationException.java
-
-**Purpose:** Custom exceptions for rubric marks **What to write:**
-
-- DatabaseException extends RuntimeException with message constructor
-- ValidationException extends RuntimeException with message + field name
-
-### Step 1.3 — Run schema.sql
-
-Execute all CREATE TABLE statements in MySQL Workbench or terminal. Verify all 6 tables are created: users, expenses, budgets, goals, system_settings, audit_logs.
+**11. Admin console**
+1. Log in as `admin@myfinance.com` (see Installation, Step 5).
+2. **Overview** shows counters and recent logs. **User Accounts** supports search, role change, status change and delete. **Security & Audit** and **System Settings** show and store the platform settings (some security switches are stored settings only, see Known limitations). Each change appears in the audit log.
 
 ---
 
-## PHASE 2 — Model Layer (Java Classes + Inheritance)
+## SMS sync with a phone
 
-### Step 2.1 — Create BaseEntity.java
+A Java web application cannot read SMS messages from a phone. The phone has to send the message text to the server. This project uses MacroDroid, a free Android automation app, for that step. Everything after the HTTP request is handled by the Java code.
 
-**Purpose:** Abstract parent class — earns Inheritance marks **What to write:**
-
-- abstract class BaseEntity
-- Fields: int id, LocalDateTime createdAt
-- Abstract method: public abstract boolean validate()
-- Getters and setters for all fields
-
-**Prompt to use:**
-
-> "Write abstract class BaseEntity in package com.myfinance.model with fields id (int) and createdAt (LocalDateTime). Add abstract method validate() returning boolean. Add getters and setters."
-
-### Step 2.2 — Create User.java
-
-**Purpose:** User entity extending BaseEntity **What to write:**
-
-- extends BaseEntity
-- Fields: String name, email, password, Role role, Status status
-- Enum Role { USER, ADMIN }
-- Enum Status { ACTIVE, INACTIVE, PENDING }
-- Override validate() — check name/email not null, email contains @
-
-### Step 2.3 — Create Expense.java
-
-**Purpose:** Expense entity extending BaseEntity **What to write:**
-
-- extends BaseEntity
-- Fields: int userId, String title, double amount, String category, LocalDate expenseDate, String description
-- Override validate() — check amount > 0, title not empty, date not null
-
-### Step 2.4 — Create Budget.java
-
-**Purpose:** Budget entity extending BaseEntity **What to write:**
-
-- extends BaseEntity
-- Fields: int userId, String category, double limitAmount, double spentAmount, LocalDate startDate, LocalDate endDate
-- Override validate() — check limitAmount > 0, startDate before endDate
-- Extra method: getUsagePercent() returns (spentAmount/limitAmount)*100
-- Extra method: getRemainingAmount() returns limitAmount - spentAmount
-
-### Step 2.5 — Create Goal.java
-
-**Purpose:** Goal entity extending BaseEntity **What to write:**
-
-- extends BaseEntity
-- Fields: int userId, String title, String description, double targetAmount, double savedAmount, LocalDate deadline, GoalStatus status
-- Enum GoalStatus { IN_PROGRESS, ACHIEVED, FAILED }
-- Override validate() — check targetAmount > 0, deadline in future
-- Extra method: getProgressPercent() returns (savedAmount/targetAmount)*100
-- Extra method: getRemainingAmount() returns targetAmount - savedAmount
-
----
-
-## PHASE 3 — DAO Layer (JDBC = 8 Marks)
-
-### Step 3.1 — Create DAO Interfaces
-
-**Purpose:** Interfaces rubric mark **What to write for each (UserDAO, ExpenseDAO, BudgetDAO, GoalDAO):**
-
-- save(Entity e) throws SQLException
-- findById(int id) throws SQLException
-- findByUserId(int userId) throws SQLException (except UserDAO)
-- findAll() throws SQLException
-- update(Entity e) throws SQLException
-- delete(int id) throws SQLException
-
-**Prompt to use:**
-
-> "Write ExpenseDAO interface in package com.myfinance.dao.interfaces with methods: save(Expense), findById(int), findByUserId(int), findByUserIdAndMonth(int userId, int month, int year), findAll(), update(Expense), delete(int). All throw SQLException."
-
-### Step 3.2 — Create UserDAOImpl.java
-
-**Purpose:** Raw JDBC for user CRUD **What to write:**
-
-- implements UserDAO
-- save(): INSERT INTO users with PreparedStatement, use BCrypt for password
-- findById(): SELECT * WHERE id=?, map ResultSet to User object
-- findByEmail(): SELECT * WHERE email=? (needed for login)
-- findAll(): SELECT * FROM users, return List
-- update(): UPDATE users SET name=?, email=?, role=?, status=? WHERE id=?
-- delete(): DELETE FROM users WHERE id=?
-- Always use try-with-resources for Connection and PreparedStatement
-
-### Step 3.3 — Create ExpenseDAOImpl.java
-
-**Purpose:** Raw JDBC for expense CRUD (most used DAO) **What to write:**
-
-- implements ExpenseDAO
-- save(): INSERT INTO expenses
-- findByUserId(): SELECT WHERE user_id=? ORDER BY expense_date DESC
-- findByUserIdAndMonth(): SELECT WHERE user_id=? AND MONTH(expense_date)=?
-- findByUserIdAndCategory(): for budget tracking
-- getSumByUserIdAndMonth(): SELECT SUM(amount) for dashboard total
-- update(): UPDATE expenses SET title=?, amount=?, category=?, date=?
-- delete(): DELETE FROM expenses WHERE id=? AND user_id=? (security check)
-
-### Step 3.4 — Create BudgetDAOImpl.java
-
-**What to write:**
-
-- All CRUD with raw JDBC
-- updateSpentAmount(int budgetId, double amount): called when expense added
-- findByUserIdAndCategory(): check if budget exists for category
-- findOverBudget(int userId): SELECT WHERE spent_amount >= limit_amount
-
-### Step 3.5 — Create GoalDAOImpl.java
-
-**What to write:**
-
-- All CRUD with raw JDBC
-- updateSavedAmount(int goalId, double amount): add savings to goal
-- findByStatus(int userId, String status): filter by IN_PROGRESS/ACHIEVED
-- markAsAchieved(int goalId): UPDATE status='ACHIEVED' WHERE id=?
-
----
-
-## PHASE 4 — Service Layer (Business Logic + Collections)
-
-### Step 4.1 — Create AuthService.java
-
-**Purpose:** Login and registration logic **What to write:**
-
-- register(User user): validate, hash password with BCrypt, call userDAO.save()
-- login(String email, String password): findByEmail, BCrypt.checkpw()
-- Return User object on success, null on failure
-
-### Step 4.2 — Create ExpenseService.java
-
-**Purpose:** Collections & Generics rubric marks **What to write:**
-
-- addExpense(Expense e): validate, save, then update budget spent amount
-- getMonthlyExpenses(int userId): returns List
-- getCategoryTotals(int userId): returns Map<String, Double> — category→total (This is the Collections + Generics mark — HashMap usage)
-- getMonthlyTotal(int userId): returns double
-- ApiResponse generic wrapper used in all return types
-
-**Generic class to add:**
-
-```java
-public class ApiResponse<T> {
-    private boolean success;
-    private String message;
-    private T data;
-    // constructor, getters
-}
+```mermaid
+flowchart TD
+    A[Bank SMS arrives on the phone] --> B[MacroDroid sends an HTTP POST]
+    B --> C[SmsApiServlet checks the X-API-Token header]
+    C --> D[SmsParser reads amount, merchant and UPI ref]
+    D --> E["Row saved in sms_queue as PENDING"]
+    E --> F[Confirmation prompt in the browser]
+    F -->|User taps Confirm| G[Spend Guard checks the budget]
+    G --> H[Expense saved with source SMS_SYNC]
+    F -->|User taps Dismiss| I[Row marked REJECTED]
 ```
 
-### Step 4.3 — Create BudgetService.java
+**Setup**
 
-**Purpose:** Budget alert innovation **What to write:**
+1. Connect the phone and the computer to the same Wi-Fi. If the network blocks device-to-device traffic, use the phone's hotspot and connect the computer to it.
+2. Start the server and note the Wi-Fi address printed in the console, for example `http://192.168.1.5:8080/myfinance`. The address can change when the network changes.
+3. Allow port 8080 through the computer's firewall.
+4. Log in, open **Profile & Sync**, and copy the API token. Keep it private.
+5. In MacroDroid, create a macro:
+   - Trigger: SMS received, message contains `debited`.
+   - Action: HTTP request, method POST.
+   - URL: `http://<computer-address>:8080/myfinance/api/sms-sync`
+   - Header: `X-API-Token` with the copied token.
+   - Content type: `text/plain`.
+   - Body: insert the **SMS message** variable with the magic-text button.
+6. In the phone's battery settings, set MacroDroid to unrestricted so Android does not stop it.
 
-- createBudget(Budget b): validate, save
-- getBudgetStatus(int userId): returns List with % used
-- checkAlerts(int userId): returns List of alert messages -- "Shopping budget is 98% used!" etc. -- This is the INNOVATION — called on every dashboard load
-- updateSpentOnExpenseAdd(int userId, String category, double amount)
+**Testing without a phone**
 
-### Step 4.4 — Create GoalService.java
+```
+curl -X POST http://localhost:8080/myfinance/api/sms-sync \
+  -H "Content-Type: text/plain" \
+  -H "X-API-Token: <your token>" \
+  -d "Rs 250.00 debited from A/c XX1234 via UPI to Zomato. Ref 412398765432"
+```
 
-**What to write:**
+Further sample messages are in `sample-sms.txt`. The Expenses page also has a paste box that sends text to the same endpoint, which is convenient for testing.
 
-- createGoal(Goal g): validate, save
-- addSavings(int goalId, double amount): update saved_amount, check if achieved
-- getProgressDetails(Goal g): returns Map with percent, remaining, daysLeft -- daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), g.getDeadline()) -- This powers the INNOVATION deadline countdown
+**How the endpoint behaves**
 
-### Step 4.5 — Create InsightService.java
-
-**Purpose:** Weekly plain-language tip (Innovation 4) **What to write:**
-
-- getWeeklyInsight(int userId): returns String
-- Compare this month vs last month totals per category
-- Return sentence like "You spent ₹2,100 more on Food this month"
-- CategoryMapper.java: HashMap<String, String> with 20+ keywords "swiggy"→"Food", "ola"→"Transport", "amazon"→"Shopping", etc.
+- Accepted bodies: plain text, a JSON object with an `sms`, `message` or `text` field, or a form field named `sms`.
+- An empty, blank or placeholder message (for example `{sms_message}`) returns HTTP 400. So does a message with no amount or a zero amount. A missing or invalid token returns HTTP 401.
+- A credit message (money received) is not queued. The endpoint answers HTTP 200 with `"saved":false` and the reason `credit ignored`.
+- A message that is saved returns HTTP 200 with `"saved":true`.
+- `GET` returns the pending messages and the live-sync status. `POST` with `action=confirm` turns a pending message into an expense, and `action=reject` dismisses it.
+- The parser recognises amounts written as Rs, Rs., INR or the rupee sign, UPI reference numbers, and merchant names (from the text after "to", "at" or "for", from the ICICI "Info:" format, or from a list of well-known merchants). It handles message styles from SBI, HDFC, ICICI and Axis.
+- The browser checks for new pending messages every 5 seconds. A background thread, `SmsProcessorThread`, checks the queue every 30 seconds and parses again any message that has no valid amount or merchant.
+- Times are handled in the Asia/Kolkata timezone.
 
 ---
 
-## PHASE 5 — Thread Layer (Multithreading = 4 Marks)
+## Project structure
 
-### Step 5.1 — Create BudgetAlertThread.java
+```
+src/main/java/com/myfinance/
+├── AppServer.java            starts the embedded Tomcat (port 8080, context /myfinance)
+├── model/                    entities and data classes
+│   ├── BaseEntity.java       abstract parent of User, Expense, Budget, Goal, CashEntry, SmsQueueItem, SpendingPersonality
+│   ├── FinanceOperation.java generic interface implemented by four services
+│   └── ...                   Category, SpendGuardAlert, PersonalityReport
+├── dao/
+│   ├── interfaces/           8 DAO interfaces
+│   └── impl/                 8 JDBC implementations
+├── service/                  business logic (11 classes)
+├── servlet/                  10 servlets, plus 4 admin servlets in servlet/admin
+├── thread/                   BudgetAlertThread, SmsProcessorThread
+├── listener/                 AppStartupListener starts and stops the threads
+├── exception/                DatabaseException, ValidationException
+└── util/                     DBConnection, PasswordUtil, SessionUtil, SmsParser, CategoryMapper, ApiResponse
 
-**Purpose:** Background thread — earns Multithreading marks **What to write:**
+src/main/webapp/
+├── WEB-INF/web.xml           servlet mappings, session timeout, error pages
+├── css/                      global, layout, dashboard, auth, responsive
+├── js/                       main, charts, sms-sync, fincoach, validation, offline
+└── jsp/
+    ├── auth/                 login, register
+    ├── user/                 dashboard, expenses, budgets, goals, cash, personality, fincoach, profile
+    ├── admin/                admin-dashboard, user-management, security, settings
+    ├── common/               sidebars, topbar, navbar, flash message
+    └── error/                403, 404, 500
 
-```java
-public class BudgetAlertThread implements Runnable {
-    @Override
-    public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                checkAllUserBudgets();      // synchronized method
-                Thread.sleep(3600000);      // runs every 1 hour
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+src/test/java/com/myfinance/  JUnit tests
+database/schema.sql           creates the 9 tables and the default data
+sample-sms.txt                example bank messages for testing
+pom.xml                       Maven build file
+```
+
+The layers are kept separate: servlets handle requests and responses, services hold the logic, DAOs hold the SQL, and models hold the data.
+
+Services: `AuthService`, `ExpenseService`, `BudgetService`, `GoalService`, `CashService`, `AllowanceService`, `AllowanceCalculator`, `PersonalityService`, `PersonalityDetector`, `InsightService`, `FinCoachService`.
+
+---
+
+## Database design
+
+The database has 9 tables. `database/schema.sql` contains the full definitions and the default data.
+
+```mermaid
+erDiagram
+    USERS ||--o{ EXPENSES : logs
+    USERS ||--o{ CASH_ENTRIES : tracks
+    USERS ||--o{ BUDGETS : sets
+    USERS ||--o{ GOALS : saves
+    USERS ||--o{ SMS_QUEUE : receives
+    USERS ||--o{ SPENDING_PERSONALITY : has
+    USERS ||--o{ AUDIT_LOGS : "admin actions"
+    USERS |o--o{ SYSTEM_SETTINGS : updates
+
+    USERS {
+        int id PK
+        string name
+        string email
+        string role
+        string status
+        decimal monthly_income
+        decimal cash_in_hand
+        string api_token
     }
-
-    private synchronized void checkAllUserBudgets() {
-        // fetch all active users
-        // for each user, check budget usage
-        // log alerts to console / audit_logs table
+    EXPENSES {
+        int id PK
+        int user_id FK
+        string title
+        decimal amount
+        string category
+        date expense_date
+        string source
+        string upi_ref
     }
-}
-```
-
-- Start it in a ServletContextListener (AppStartupListener.java)
-- Mark it as daemon thread so it stops when server stops
-
----
-
-## PHASE 6 — Servlet Layer (Servlets = 7 Marks)
-
-### Step 6.1 — Create AuthServlet.java (/auth)
-
-**Purpose:** Handle login and register **doGet():** Check if already logged in → redirect to dashboard, else → login.jsp **doPost():** Read action param ("login" or "register")
-
-- Login: AuthService.login() → set session → redirect by role
-- Register: build User object → AuthService.register() → redirect login
-- Set session attributes: userId, userName, userRole
-
-### Step 6.2 — Create DashboardServlet.java (/dashboard)
-
-**doGet():**
-
-- Check session (if null → redirect /auth)
-- Check role: if ADMIN → redirect /admin/dashboard
-- Fetch: monthly total, expense list (last 5), budget list, goal list
-- Fetch: InsightService.getWeeklyInsight()
-- Fetch: BudgetService.checkAlerts() → pass alert list to JSP
-- Forward to dashboard.jsp with all data as request attributes
-
-### Step 6.3 — Create ExpenseServlet.java (/expenses)
-
-**doGet():**
-
-- Get filter params: month, year, category (from request)
-- Fetch filtered expense list via ExpenseService
-- Get category totals Map for chart data
-- Forward to expenses.jsp
-
-**doPost():**
-
-- Read action: "add", "delete", "edit"
-- Add: build Expense, validate, ExpenseService.addExpense()
-- Auto-suggest category: CategoryMapper.suggest(title)
-- Delete: ExpenseService.delete(id, userId) — security check userId
-- Edit: update expense fields
-- Redirect to /expenses after each action
-
-### Step 6.4 — Create BudgetServlet.java (/budgets)
-
-**doGet():**
-
-- Fetch all budgets for user
-- Calculate usage percent for each
-- Get alert list from BudgetService
-- Forward to budgets.jsp
-
-**doPost():**
-
-- action = "create": validate, BudgetService.createBudget()
-- action = "delete": BudgetDAOImpl.delete()
-- action = "edit": update budget fields
-- Redirect to /budgets
-
-### Step 6.5 — Create GoalServlet.java (/goals)
-
-**doGet():**
-
-- Fetch all goals, calculate progress % for each
-- Get daysLeft for each goal
-- Forward to goals.jsp
-
-**doPost():**
-
-- action = "create": GoalService.createGoal()
-- action = "add-savings": GoalService.addSavings(goalId, amount)
-- action = "delete": GoalDAOImpl.delete()
-- Redirect to /goals
-
-### Step 6.6 — Create Admin Servlets
-
-**AdminDashServlet.java (/admin/dashboard):**
-
-- Check role == ADMIN, else redirect /dashboard
-- Fetch: total users, active users, expense count, security alerts
-- Forward to admin-dashboard.jsp
-
-**UserMgmtServlet.java (/admin/users):**
-
-- doGet(): fetch all users with optional search/filter params
-- doPost(): action = "create"/"update"/"delete"/"change-status"
-- Log every action to audit_logs table
-
-**SecurityServlet.java (/admin/security):**
-
-- doGet(): fetch security settings from system_settings table
-- doPost(): update encryption/2FA/session timeout settings
-- Log changes to audit_logs
-
-**SettingsServlet.java (/admin/settings):**
-
-- doGet(): fetch all system_settings rows
-- doPost(): update setting by key, log to audit_logs
-
----
-
-## PHASE 7 — Frontend Layer (JSP + CSS + Responsive)
-
-### Step 7.1 — Create global.css
-
-**CSS Variables to define:**
-
-```css
-:root {
-  --primary:    #f4a261;
-  --primary-dk: #e07b35;
-  --dark:       #1a1a2e;
-  --surface:    #ffffff;
-  --bg:         #f5f7fa;
-  --text:       #1e1e2e;
-  --text-muted: #888888;
-  --border:     #eaedf3;
-  --success:    #22c55e;
-  --warning:    #f59e0b;
-  --danger:     #ef4444;
-  --radius:     12px;
-  --shadow:     0 2px 8px rgba(0,0,0,0.08);
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
-```
-
-### Step 7.2 — Create responsive.css
-
-**Breakpoints:**
-
-```css
-/* Tablet */
-@media (max-width: 1024px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .two-col    { grid-template-columns: 1fr; }
-}
-/* Mobile */
-@media (max-width: 768px) {
-  .sidebar         { display: none; }
-  .sidebar.open    { display: flex; position: fixed; z-index: 999; }
-  .topbar          { padding: 0 16px; }
-  .stats-grid      { grid-template-columns: 1fr 1fr; }
-  .main-content    { padding: 16px; }
-  .hamburger       { display: block; }
-}
-/* Small mobile */
-@media (max-width: 480px) {
-  .stats-grid   { grid-template-columns: 1fr; }
-  .form-row     { grid-template-columns: 1fr; }
-  .table-scroll { overflow-x: auto; }
-}
-```
-
-### Step 7.3 — Create login.jsp and register.jsp
-
-**login.jsp layout:**
-
-- Split screen: left = branding (dark bg, logo, tagline)
-- Right = form card (email, password, submit, link to register)
-- Show error message if session has "error" attribute
-- Responsive: on mobile = single column (form only)
-
-### Step 7.4 — Create dashboard.jsp (User)
-
-**Layout:**
-
-- Topbar: logo, nav links, notification bell, avatar
-- Sidebar: nav items (Home, Expenses, Budgets, Goals, Profile)
-- Main: welcome banner → stats row → spending donut + budget bars → recent expenses → goal cards
-- Alert banner at top if BudgetService.checkAlerts() returns non-empty list
-- Mobile: hamburger menu opens sidebar as overlay
-
-### Step 7.5 — Create expenses.jsp
-
-**Layout:**
-
-- Month pill selector (Jan–Dec row)
-- Filter row: search, category dropdown, export button
-- Two-column: left = add expense form, right = expense list
-- Each row has edit and delete icon buttons
-- Category icon shown based on category name
-- Mobile: stack form above list
-
-### Step 7.6 — Create budgets.jsp
-
-**Layout:**
-
-- Stats row: total budget, spent, remaining
-- Two-column: left = create budget form, right = budget progress cards
-- Each budget card shows progress bar with colour: green < 70%, amber 70–90%, red > 90%
-- Warning box shown when > 90% used (Innovation 1)
-- Mobile: single column
-
-### Step 7.7 — Create goals.jsp
-
-**Layout:**
-
-- Filter pills: All / In Progress / Achieved / Failed
-- Two-column: left = set goal form, right = goal cards
-- Each goal card: emoji icon, title, progress bar, saved/target amounts
-- Deadline countdown badge ("48 days left")
-- Milestone badge shown at 25%, 50%, 75%, 100% (Innovation 2)
-- Achieved goals show green celebration banner
-- Mobile: single column
-
-### Step 7.8 — Create admin-dashboard.jsp
-
-**Layout:**
-
-- Same topbar + sidebar (admin nav items)
-- Stats: total users, active users, security alerts, transactions
-- Recent registrations table
-- User growth bar chart (drawn with Canvas API)
-- Active security alerts table with action buttons
-
-### Step 7.9 — Create user-management.jsp
-
-**Layout:**
-
-- Search bar + role filter + status filter + Add User button
-- Full users table: avatar, name, email, role badge, status badge, joined date, actions
-- Action buttons: edit (pencil icon), delete (trash icon)
-- Responsive: table has horizontal scroll on mobile
-
-### Step 7.10 — Create security.jsp
-
-**Layout:**
-
-- Stats row: security score, open incidents, encryption status
-- Two-column: security controls (toggles) + audit log
-- Toggle switches for: AES-256, 2FA, session timeout, IP whitelist, RBAC
-
-### Step 7.11 — Create settings.jsp
-
-**Layout:**
-
-- Two-column: platform config form + feature flag toggles
-- Change log table at bottom
-
----
-
-## PHASE 8 — JavaScript Layer
-
-### Step 8.1 — Create charts.js
-
-**Purpose:** Draw spending charts using HTML5 Canvas API (no external library) **What to write:**
-
-- drawDonutChart(canvasId, data, colors): draws category pie chart
-- drawBarChart(canvasId, labels, values): draws monthly spending bar chart
-- Data passed from JSP as JSON via request attributes
-
-### Step 8.2 — Create offline.js
-
-**Purpose:** Offline expense entry (Innovation 6) **What to write:**
-
-- Listen for online/offline events
-- On offline: show "Offline Mode" banner, store form submissions in localStorage
-- On online: sync pending expenses by submitting stored data to /expenses
-- Show "Syncing X pending expenses..." message
-
-### Step 8.3 — Create validation.js
-
-**Purpose:** Frontend form validation before submit **What to write:**
-
-- validateExpenseForm(): amount > 0, title not empty, date not empty
-- validateBudgetForm(): limit > 0, start before end
-- validateGoalForm(): target > 0, deadline in future
-- Show inline error messages below each field
-
----
-
-## PHASE 9 — Web Configuration
-
-### Step 9.1 — Configure web.xml
-
-```xml
-<!-- Map all servlets -->
-<servlet>
-  <servlet-name>AuthServlet</servlet-name>
-  <servlet-class>com.myfinance.servlet.AuthServlet</servlet-class>
-</servlet>
-<servlet-mapping>
-  <servlet-name>AuthServlet</servlet-name>
-  <url-pattern>/auth</url-pattern>
-</servlet-mapping>
-<!-- Repeat for all servlets -->
-<!-- Default welcome page -->
-<welcome-file-list>
-  <welcome-file>auth</welcome-file>
-</welcome-file-list>
-<!-- Session timeout: 30 mins -->
-<session-config>
-  <session-timeout>30</session-timeout>
-</session-config>
-<!-- Error pages -->
-<error-page>
-  <error-code>404</error-code>
-  <location>/jsp/error/404.jsp</location>
-</error-page>
-<error-page>
-  <error-code>403</error-code>
-  <location>/jsp/error/403.jsp</location>
-</error-page>
-```
-
-### Step 9.2 — Create AppStartupListener.java
-
-**Purpose:** Start background thread on server startup
-
-```java
-@WebListener
-public class AppStartupListener implements ServletContextListener {
-    private Thread alertThread;
-
-    @Override
-    public void contextInitialized(ServletContextEvent sce) {
-        BudgetAlertThread task = new BudgetAlertThread();
-        alertThread = new Thread(task, "BudgetAlertThread");
-        alertThread.setDaemon(true);
-        alertThread.start();
+    CASH_ENTRIES {
+        int id PK
+        int user_id FK
+        decimal amount
+        string category
+        date entry_date
     }
-
-    @Override
-    public void contextDestroyed(ServletContextEvent sce) {
-        if (alertThread != null) alertThread.interrupt();
+    BUDGETS {
+        int id PK
+        int user_id FK
+        string category
+        decimal limit_amount
+        decimal spent_amount
+        date start_date
+        date end_date
     }
-}
+    GOALS {
+        int id PK
+        int user_id FK
+        string title
+        decimal target_amount
+        decimal saved_amount
+        date deadline
+        string status
+    }
+    SMS_QUEUE {
+        int id PK
+        int user_id FK
+        string raw_sms
+        decimal parsed_amount
+        string parsed_merchant
+        string upi_ref
+        string status
+        timestamp created_at
+    }
+    SPENDING_PERSONALITY {
+        int id PK
+        int user_id FK
+        string personality_type
+        string primary_trait
+        int calculation_month
+        int calculation_year
+    }
+    SYSTEM_SETTINGS {
+        int id PK
+        string setting_key
+        string setting_value
+        int updated_by FK
+    }
+    AUDIT_LOGS {
+        int id PK
+        int admin_id FK
+        string action
+        int target_user
+        timestamp timestamp
+    }
 ```
+
+Key points:
+
+- In `expenses`, `source` is `MANUAL` or `SMS_SYNC`. In `sms_queue`, `status` is `PENDING`, `CONFIRMED` or `REJECTED`. In `goals`, `status` is `IN_PROGRESS`, `ACHIEVED` or `FAILED`.
+- Deleting a user also deletes that user's rows in the linked tables (`ON DELETE CASCADE`). For `system_settings`, `updated_by` is set to NULL instead.
+- `schema.sql` seeds the default system settings (`platform_name`, `default_currency`, `session_timeout`, `max_login_attempts`, `budget_alerts_enabled`, `email_reports_enabled`, `personality_min_days`) and one admin account.
 
 ---
 
-## PHASE 10 — Testing & Deployment
+## Java concepts used
 
-### Step 10.1 — Unit Testing with JUnit 5
-
-**What to test:**
-
-- UserDAOImplTest: test save(), findByEmail(), delete()
-- ExpenseServiceTest: test addExpense(), getCategoryTotals()
-- BudgetServiceTest: test checkAlerts() at 70%, 90%, 100%
-- GoalServiceTest: test getProgressPercent(), addSavings()
-
-### Step 10.2 — Manual Testing Checklist
-
-```
-AUTH:
-  [ ] Register new user
-  [ ] Login as user → goes to user dashboard
-  [ ] Login as admin → goes to admin dashboard
-  [ ] Invalid login shows error
-  [ ] Session expires after 30 mins
-
-USER FLOWS:
-  [ ] Add expense → appears in list
-  [ ] Type "Swiggy" → category auto-suggests "Food"
-  [ ] Add expense that pushes budget to 90% → alert appears
-  [ ] Create budget with start/end date
-  [ ] Budget progress bar shows correct %
-  [ ] Create goal → progress starts at 0%
-  [ ] Add savings to goal → progress updates
-  [ ] Goal at 100% → marks as Achieved
-  [ ] Offline: add expense with no internet → syncs when online
-
-ADMIN FLOWS:
-  [ ] View all users in table
-  [ ] Search user by name
-  [ ] Change user status to Inactive
-  [ ] Delete user
-  [ ] Toggle security setting
-  [ ] Change system setting → appears in change log
-
-RESPONSIVE:
-  [ ] Mobile 375px: sidebar hidden, hamburger works
-  [ ] Tablet 768px: 2-column stats grid
-  [ ] Desktop 1440px: full layout with sidebar
-```
-
-### Step 10.3 — Deploy to Tomcat
-
-```
-1. Build WAR: mvn clean package
-2. Copy myfinance.war to Tomcat/webapps/
-3. Start Tomcat: bin/startup.sh (or startup.bat on Windows)
-4. Open: http://localhost:8080/myfinance
-5. Login with admin@myfinance.com / admin123
-```
+| Concept | Where it is used |
+|---|---|
+| Inheritance | `BaseEntity` is an abstract class (with an abstract `validate()`). `User`, `Expense`, `Budget`, `Goal`, `CashEntry`, `SmsQueueItem` and `SpendingPersonality` extend it. All 14 servlets extend `HttpServlet`, and the custom exceptions extend `RuntimeException` |
+| Polymorphism | `FinanceOperation<T, R>` is a generic interface with `execute` and `summarize`. `ExpenseService`, `BudgetService`, `GoalService` and `CashService` implement it, each in its own way |
+| Interfaces | Eight DAO interfaces (`UserDAO`, `ExpenseDAO`, `BudgetDAO`, `GoalDAO`, `CashDAO`, `SmsDAO`, `AuditLogDAO`, `SystemSettingsDAO`), each with a separate JDBC implementation. `Runnable` and `ServletContextListener` are also implemented |
+| Exception handling | `DatabaseException` wraps JDBC and connection errors. `ValidationException` is thrown when an entity fails `validate()`. Servlets catch exceptions and show a friendly message |
+| Collections | `List<Expense>`, `List<Budget>`, `List<Goal>`, `List<SmsQueueItem>`, and `Map`, `HashMap`, `LinkedHashMap`, `Set` and `HashSet` in the services, for example expenses grouped by category and the personality score map |
+| Generics | `ApiResponse<T>` is a generic response wrapper, and `FinanceOperation<T, R>` is a generic interface |
+| Multithreading | `BudgetAlertThread` (checks budgets every hour) and `SmsProcessorThread` (checks the SMS queue every 30 seconds) implement `Runnable` and run as daemon threads. `AppStartupListener` starts and stops them with the server |
+| Synchronization | `checkAllUserBudgets()` in `BudgetAlertThread` and `processSmsQueue()` in `SmsProcessorThread` are `synchronized`. The stop flag in `BudgetAlertThread` is `volatile` |
+| Regular expressions | `SmsParser` extracts amounts, UPI references and merchants. `CategoryMapper` matches keywords at word boundaries. `User` validates email addresses, and `FinCoachService` detects personal questions and strips amounts before a general question is sent to the AI |
 
 ---
 
-## 📊 Mark-by-Mark Final Checklist
+## JDBC and data access
 
-### Problem Understanding & Solution Design (8 marks)
-
-- [ ] Project report written with problem statement
-- [ ] ER diagram (all 6 tables with relationships)
-- [ ] Flow diagram (user registers → logs expense → checks budget)
-- [ ] All input/output defined per module
-- [ ] Innovation points documented
-
-### Core Java Concepts (10 marks)
-
-- [ ] BaseEntity abstract class with validate() — Inheritance
-- [ ] User/Expense/Budget/Goal extend BaseEntity — Polymorphism
-- [ ] FinanceOperation interface used — Interfaces
-- [ ] DatabaseException + ValidationException — Exception Handling
-- [ ] List<>, Map<>, ApiResponse used — Collections & Generics
-- [ ] BudgetAlertThread implements Runnable + synchronized — Multithreading
-
-### Database Integration JDBC (8 marks)
-
-- [ ] DBConnection.java with raw JDBC
-- [ ] All 4 DAOImpl classes using PreparedStatement
-- [ ] ResultSet mapped to model objects
-- [ ] Try-with-resources used for all connections
-- [ ] All 6 tables created and populated
-
-### Servlets & Web Integration (7 marks)
-
-- [ ] 8+ HttpServlet subclasses written
-- [ ] doGet() and doPost() implemented in each
-- [ ] HttpSession used for auth (no JWT)
-- [ ] RequestDispatcher.forward() to JSP pages
-- [ ] All JSP pages use JSTL tags
-- [ ] web.xml has all servlet mappings
+- `DBConnection` opens connections with `DriverManager.getConnection()`. The URL, user and password come from environment variables, and the timezone is set to Asia/Kolkata.
+- Every table has a DAO interface and a JDBC implementation: `UserDAOImpl`, `ExpenseDAOImpl`, `BudgetDAOImpl`, `GoalDAOImpl`, `CashDAOImpl`, `SmsDAOImpl`, `AuditLogDAOImpl` and `SystemSettingsDAOImpl`.
+- All queries use `PreparedStatement` with `?` placeholders. No SQL is built by joining strings.
+- Connections and statements are opened with try-with-resources, so they close even when an error occurs.
+- Each DAO converts a `ResultSet` row into a model object in a private mapping method.
+- `ExpenseDAOImpl` also runs aggregate queries with `GROUP BY`, `SUM()`, `DAYOFWEEK()` and `DATE_FORMAT()` for the charts and the personality scores.
+- Edit and delete queries include `AND user_id = ?`, so one user cannot change another user's data. `CashDAOImpl` adjusts `users.cash_in_hand` together with the cash entry.
 
 ---
 
-## 🔑 Key Rules to Always Follow While Coding
+## Servlets and web layer
 
-1. **Security** — Always check session in every servlet before processing
-2. **Security** — Always check userId matches resource owner before edit/delete
-3. **Validation** — Always call entity.validate() before saving to DB
-4. **JDBC** — Always use PreparedStatement (never String concatenation in SQL)
-5. **JDBC** — Always use try-with-resources so connections auto-close
-6. **Passwords** — Always hash with BCrypt, never store plain text
-7. **Responsive** — Always test at 375px, 768px, and 1280px widths
-8. **Error handling** — Every servlet has try-catch and shows user-friendly error
+The application has 14 servlets, mapped in `web.xml`. Every servlet except `SmsApiServlet` checks the HttpSession first (the admin servlets also check the ADMIN role). `SmsApiServlet` is called by the phone, which has no browser session, so it identifies the user by the API token.
+
+| Servlet | URL | Methods | Purpose |
+|---|---|---|---|
+| `AuthServlet` | `/auth`, `/login`, `/register`, `/logout` | GET, POST | Login, register and logout |
+| `DashboardServlet` | `/dashboard` | GET | Allowance, category totals, budgets, goals and the weekly insight |
+| `ExpenseServlet` | `/expenses` | GET, POST | List and filter, add (with Spend Guard), edit, delete, category suggestion |
+| `BudgetServlet` | `/budgets` | GET, POST | Create, edit and delete budgets, usage and alert banners |
+| `GoalServlet` | `/goals` | GET, POST | Create, edit and delete goals, add savings |
+| `CashServlet` | `/cash` | GET, POST | Set balance, add and delete cash entries, reconcile |
+| `PersonalityServlet` | `/personality` | GET, POST | Calculate and show the spending personality, refresh |
+| `FinCoachServlet` | `/fincoach` | GET, POST | Accepts questions and returns answers from the database or from Gemini |
+| `ProfileServlet` | `/profile` | GET, POST | Update profile, regenerate the API token |
+| `SmsApiServlet` | `/api/sms-sync` | GET, POST | Receive SMS text, list pending items, confirm or reject them |
+| `AdminDashServlet` | `/admin/dashboard`, `/admin` | GET | Platform counters and recent audit logs |
+| `UserMgmtServlet` | `/admin/users` | GET, POST | Search, change status or role, create and delete users |
+| `SecurityServlet` | `/admin/security` | GET, POST | Session timeout, login attempts and audit history |
+| `SettingsServlet` | `/admin/settings` | GET, POST | Currency, platform name and feature switches |
+
+Pages are JSPs that receive their data from the servlets as request attributes. `web.xml` also sets the session timeout (30 minutes, HTTP-only cookie) and the 403, 404 and 500 error pages. The stylesheets have breakpoints at 1024px, 768px, 480px and 390px. On small screens the sidebar is replaced by a bottom navigation bar.
 
 ---
 
-*MyFinance — Built with Java Servlets + JDBC + MySQL + JSP* *GUVI Project — Online Personal Finance Management Platform*
+## Security and coding rules
+
+1. Every servlet checks the session first. The only exception is `SmsApiServlet`, which uses the API token.
+2. SQL always uses `PreparedStatement`, never string concatenation.
+3. JDBC resources always use try-with-resources.
+4. Passwords are hashed with BCrypt (cost factor 12) and never stored as plain text.
+5. `validate()` runs before an entity is saved.
+6. Spend Guard checks the budget before the INSERT.
+7. AI is never used for the user's personal numbers. Personal questions are answered from the database only.
+8. Every automated result shows how it was calculated.
+9. An SMS becomes an expense only after the user confirms it.
+10. Pages are designed for phone, tablet and desktop widths.
+11. Edit and delete actions check that the record belongs to the logged-in user.
+12. Servlets catch errors and show a friendly message instead of a stack trace.
+13. Errors use the custom exceptions `DatabaseException` and `ValidationException`.
+14. Collections and generics are used with proper types instead of raw types.
+
+What this means for users:
+
+- **Passwords.** Passwords are stored only as BCrypt hashes, so they cannot be read back, not even by an admin.
+- **Your data stays yours.** Every read, edit and delete is tied to the logged-in account, so one user cannot see or change another user's expenses, budgets, goals or cash entries.
+- **Sessions.** Sessions expire after 30 minutes of inactivity, and the session cookie is HTTP-only.
+- **SMS.** The application never reads a phone. It only receives the messages that the user's own phone app forwards, and nothing becomes an expense until the user confirms it. The full text of a forwarded message is stored in the database so that it can be parsed.
+- **SMS token.** The API token works only for its own account and can be regenerated at any time. The old token stops working.
+- **AI.** FinCoach never sends amounts, balances, budgets or goals to the AI. Personal questions are answered from the database, and only general questions go to Gemini, with any numbers removed.
+- **Admin actions.** Changes made in the admin console are recorded in the audit log.
+- **Not covered yet.** The application runs over plain HTTP on a local machine, so HTTPS should be used if it is ever deployed. Two-factor login, encryption of stored data, IP whitelisting and a login-attempt lockout are not implemented, even though the admin security page has switches for some of them.
+
+Other details:
+
+- API tokens look like `myf_` followed by a random UUID without dashes.
+- The database password and the Gemini key are read from environment variables. No secrets are stored in the repository.
+- `schema.sql` creates a default admin account for local demonstration. Change its password before any real use.
+
+---
+
+## Testing
+
+There are 41 JUnit tests in 11 test classes in `src/test/java/com/myfinance/`, run with `mvn clean test`. They cover:
+
+| Test class | Covers |
+|---|---|
+| `DBConnectionTest` | Database connection |
+| `UserDAOImplTest` | Creating, finding and deleting a user |
+| `ModelEntityTest` | Validation rules of the entities |
+| `AllowanceServiceTest` | Allowance pool, budgeted spending, days left, negative allowance |
+| `BudgetServiceAlertTest` | Spend Guard at 80% and above 100% |
+| `ExpenseServiceTest` | Expense validation, creation and category totals |
+| `FinCoachServiceTest` | Routing of personal and general questions, disclaimer, fallback |
+| `GoalServiceTest` | Goal progress and deadline |
+| `CategoryMapperTest` | Keyword suggestions and word boundaries |
+| `PasswordUtilTest` | BCrypt hashing and verification |
+| `SmsParserTest` | SBI, HDFC, ICICI and Axis message formats, debit detection |
+
+The tests run on a temporary embedded H2 database, so they do not use the MySQL data.
+
+Manual testing covered logging in, adding and filtering expenses, exceeding a budget to trigger Spend Guard, and sending SMS from a phone through MacroDroid and confirming them on the website.
+
+---
+
+## Known limitations
+
+- **SMS sync needs a helper app.** It works on Android with MacroDroid. There is no native mobile app, and iPhones do not allow the same kind of forwarding.
+- **Same network only.** The phone sends messages to the computer's local address, so both must be on the same network and the address has to be updated when it changes. A deployed server with HTTPS would remove this limit. The endpoint also accepts the token as a query parameter, which is less safe than the header because URLs can end up in logs.
+- **The SMS parser covers common formats.** Banks word their messages differently, so some messages may show "Unknown Merchant" or miss the UPI reference.
+- **Spending personality needs data.** It needs expenses on at least 7 different days in the last 30 days.
+- **FinCoach AI mode needs a key, internet access and a Gemini model that is still available.** Without them, general questions are answered with a built-in educational text.
+- **Night-time spending is not analysed.** Expenses store only a date, not a time.
+- **Local use only.** The application has been run on a local machine with an embedded Tomcat and has not been deployed to a public server.
+- **Some admin security switches are settings only.** The switches for 2FA, AES encryption, IP whitelist and the login-attempt limit are stored in `system_settings` but are not enforced by the code.
+- **Default admin account.** The seeded admin credentials are public in this repository and are meant for local demonstration only.
+- **Categories are guessed from keywords.** Some expenses may need their category changed by hand.
+
+## Possible improvements
+
+- CSV export of expenses
+- Recurring expenses
+- A monthly summary email
+- A native Android app for SMS sync
+- Moving the SMS parser patterns into a configuration file
+- Deploying with HTTPS so phone sync works from any network
+

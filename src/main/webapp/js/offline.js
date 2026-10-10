@@ -1,95 +1,131 @@
-// Offline expense entry functionality
+/**
+ * MyFinance 2.0 — Offline Expense Entry & Background Sync (Innovation 6)
+ * Stores pending expenses in localStorage when internet is disconnected and auto-syncs when online.
+ */
 
-let pendingExpenses = [];
+const OFFLINE_QUEUE_KEY = 'myfinance_offline_queue';
 
-// Listen for online/offline events
-window.addEventListener('online', handleOnline);
-window.addEventListener('offline', handleOffline);
-
-function handleOnline() {
-    console.log('Back online');
-    syncPendingExpenses();
-    hideOfflineBanner();
-}
-
-function handleOffline() {
-    console.log('Gone offline');
-    showOfflineBanner();
-}
-
-function showOfflineBanner() {
-    const banner = document.createElement('div');
-    banner.id = 'offline-banner';
-    banner.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #f59e0b;
-        color: white;
-        padding: 12px;
-        text-align: center;
-        z-index: 1000;
-        font-weight: 500;
-    `;
-    banner.textContent = 'You are offline. Expenses will be saved and synced when you are back online.';
-    document.body.appendChild(banner);
-}
-
-function hideOfflineBanner() {
-    const banner = document.getElementById('offline-banner');
-    if (banner) {
-        banner.remove();
+function getOfflineQueue() {
+    try {
+        const data = localStorage.getItem(OFFLINE_QUEUE_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        return [];
     }
 }
 
-function saveExpenseOffline(expenseData) {
-    pendingExpenses.push(expenseData);
-    localStorage.setItem('pendingExpenses', JSON.stringify(pendingExpenses));
-    console.log('Expense saved offline:', expenseData);
+function saveOfflineQueue(queue) {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
 }
 
-async function syncPendingExpenses() {
-    const stored = localStorage.getItem('pendingExpenses');
-    if (!stored) return;
+function showToast(message, type = 'info') {
+    let container = document.getElementById('offlineSyncToast');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'offlineSyncToast';
+        container.className = 'offline-sync-indicator';
+        document.body.appendChild(container);
+    }
 
-    pendingExpenses = JSON.parse(stored);
+    const icon = type === 'offline' ? '📡' : (type === 'success' ? '✨' : '⚡');
+    container.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+    container.style.display = 'flex';
 
-    if (pendingExpenses.length === 0) return;
+    setTimeout(() => {
+        container.style.display = 'none';
+    }, 4500);
+}
 
-    console.log(`Syncing ${pendingExpenses.length} pending expenses...`);
+// Sync queued transactions when online connection is restored
+async function syncOfflineQueue() {
+    const queue = getOfflineQueue();
+    if (!queue || queue.length === 0) return;
 
-    for (const expense of pendingExpenses) {
+    showToast(`Syncing ${queue.length} offline expense(s)...`, 'sync');
+
+    let syncedCount = 0;
+    const remaining = [];
+
+    for (const item of queue) {
         try {
-            const response = await fetch('/expenses', {
+            const formData = new URLSearchParams();
+            formData.append('action', 'add');
+            formData.append('title', item.title);
+            formData.append('amount', item.amount);
+            formData.append('category', item.category);
+            formData.append('expenseDate', item.expenseDate);
+            formData.append('description', item.description || '');
+
+            const response = await fetch(item.endpoint || window.location.pathname, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams(expense)
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
             });
 
             if (response.ok) {
-                console.log('Synced expense:', expense);
+                syncedCount++;
+            } else {
+                remaining.push(item);
             }
-        } catch (error) {
-            console.error('Failed to sync expense:', error);
+        } catch (e) {
+            remaining.push(item);
         }
     }
 
-    // Clear pending expenses after sync
-    pendingExpenses = [];
-    localStorage.removeItem('pendingExpenses');
-    console.log('All pending expenses synced');
+    saveOfflineQueue(remaining);
+
+    if (syncedCount > 0) {
+        showToast(`Successfully synced ${syncedCount} expense(s)! Refreshing...`, 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    }
 }
 
-// Load pending expenses on page load
-window.addEventListener('load', () => {
-    const stored = localStorage.getItem('pendingExpenses');
-    if (stored) {
-        pendingExpenses = JSON.parse(stored);
-        if (pendingExpenses.length > 0 && navigator.onLine) {
-            syncPendingExpenses();
-        }
+// Initialize listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Monitor connection events
+    window.addEventListener('online', () => {
+        showToast('Internet connection restored. Synchronizing data...', 'success');
+        syncOfflineQueue();
+    });
+
+    window.addEventListener('offline', () => {
+        showToast('You are offline. Transactions will be saved locally and synced later.', 'offline');
+    });
+
+    // Check for pending queue on page load
+    if (navigator.onLine) {
+        syncOfflineQueue();
+    }
+
+    // Intercept expense forms if offline
+    const expenseForm = document.getElementById('expenseForm');
+    if (expenseForm) {
+        expenseForm.addEventListener('submit', (e) => {
+            if (!navigator.onLine) {
+                e.preventDefault();
+
+                const formData = new FormData(expenseForm);
+                const item = {
+                    title: formData.get('title'),
+                    amount: formData.get('amount'),
+                    category: formData.get('category'),
+                    expenseDate: formData.get('expenseDate'),
+                    description: formData.get('description'),
+                    endpoint: expenseForm.action,
+                    timestamp: new Date().toISOString()
+                };
+
+                const queue = getOfflineQueue();
+                queue.push(item);
+                saveOfflineQueue(queue);
+
+                showToast(`Saved "${item.title}" offline. Will sync automatically when back online.`, 'offline');
+                expenseForm.reset();
+                const dateInput = document.getElementById('expenseDate');
+                if (dateInput) dateInput.valueAsDate = new Date();
+            }
+        });
     }
 });

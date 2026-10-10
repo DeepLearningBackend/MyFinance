@@ -1,8 +1,8 @@
 package com.myfinance.servlet;
 
-import com.myfinance.exception.ValidationException;
 import com.myfinance.model.Goal;
 import com.myfinance.service.GoalService;
+import com.myfinance.util.ApiResponse;
 import com.myfinance.util.SessionUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -11,91 +11,193 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
-@WebServlet("/goals")
+/**
+ * Controller for managing financial savings goals and milestone badges (/goals).
+ */
+@WebServlet(name = "GoalServlet", urlPatterns = {"/goals"})
 public class GoalServlet extends HttpServlet {
-    private GoalService goalService;
 
-    @Override
-    public void init() throws ServletException {
-        goalService = new GoalService();
+    private final GoalService goalService;
+
+    /**
+     * Default constructor initializing GoalService.
+     */
+    public GoalServlet() {
+        this.goalService = new GoalService();
+    }
+
+    /**
+     * Constructor for dependency injection and testing.
+     *
+     * @param goalService goal service instance
+     */
+    public GoalServlet(GoalService goalService) {
+        this.goalService = goalService;
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!SessionUtil.isLoggedIn(request)) {
-            response.sendRedirect(request.getContextPath() + "/auth");
+        if (!SessionUtil.checkSessionOrRedirect(request, response)) {
             return;
         }
 
-        int userId = SessionUtil.getUserId(request);
+        int userId = SessionUtil.getSessionUserId(request);
+        String filterParam = request.getParameter("status");
 
-        try {
-            List<Goal> goals = goalService.getAllGoals(userId);
-
-            request.setAttribute("goals", goals);
-
-            request.getRequestDispatcher("/jsp/user/goals.jsp").forward(request, response);
-        } catch (SQLException e) {
-            request.setAttribute("error", "Error loading goals: " + e.getMessage());
-            request.getRequestDispatcher("/jsp/user/goals.jsp").forward(request, response);
+        Goal.GoalStatus statusFilter = null;
+        if (filterParam != null && !filterParam.isEmpty() && !"ALL".equalsIgnoreCase(filterParam)) {
+            try {
+                statusFilter = Goal.GoalStatus.valueOf(filterParam.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                statusFilter = null;
+            }
         }
+
+        List<Goal> goals = goalService.getUserGoals(userId, statusFilter);
+        List<Map<String, Object>> goalCards = new ArrayList<>();
+
+        double totalTarget = 0.0;
+        double totalSaved = 0.0;
+        int achievedCount = 0;
+
+        for (Goal g : goals) {
+            Map<String, Object> details = goalService.getProgressDetails(g);
+            details.put("goal", g);
+            goalCards.add(details);
+
+            totalTarget += g.getTargetAmount();
+            totalSaved += g.getSavedAmount();
+            if (g.getStatus() == Goal.GoalStatus.ACHIEVED) {
+                achievedCount++;
+            }
+        }
+
+        request.setAttribute("goalCards", goalCards);
+        request.setAttribute("selectedFilter", filterParam != null ? filterParam : "ALL");
+        request.setAttribute("totalTarget", totalTarget);
+        request.setAttribute("totalSaved", totalSaved);
+        request.setAttribute("achievedCount", achievedCount);
+        request.setAttribute("totalGoalsCount", goals.size());
+
+        request.getRequestDispatcher("/jsp/user/goals.jsp").forward(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!SessionUtil.isLoggedIn(request)) {
-            response.sendRedirect(request.getContextPath() + "/auth");
+        if (!SessionUtil.checkSessionOrRedirect(request, response)) {
             return;
         }
 
+        int userId = SessionUtil.getSessionUserId(request);
         String action = request.getParameter("action");
+        if (action == null) action = "create";
+
+        switch (action.toLowerCase()) {
+            case "add-savings" -> handleAddSavings(request, response, userId);
+            case "edit" -> handleEdit(request, response, userId);
+            case "delete" -> handleDelete(request, response, userId);
+            default -> handleCreate(request, response, userId);
+        }
+    }
+
+    private void handleCreate(HttpServletRequest request, HttpServletResponse response, int userId) throws IOException {
+        String title = request.getParameter("title");
+        String description = request.getParameter("description");
+        String targetStr = request.getParameter("targetAmount");
+        String deadlineStr = request.getParameter("deadline");
 
         try {
-            if ("create".equals(action)) {
-                int userId = SessionUtil.getUserId(request);
-                Goal goal = new Goal();
-                goal.setUserId(userId);
-                goal.setTitle(request.getParameter("title"));
-                goal.setDescription(request.getParameter("description"));
-                goal.setTargetAmount(Double.parseDouble(request.getParameter("targetAmount")));
-                goal.setSavedAmount(0.0);
-                goal.setDeadline(LocalDate.parse(request.getParameter("deadline")));
-                goal.setStatus(Goal.GoalStatus.IN_PROGRESS);
+            double target = Double.parseDouble(targetStr);
+            LocalDate deadline = (deadlineStr != null && !deadlineStr.isEmpty())
+                    ? LocalDate.parse(deadlineStr)
+                    : LocalDate.now().plusMonths(6);
 
-                goalService.createGoal(goal);
-                request.getSession().setAttribute("success", "Goal created successfully");
-            } else if ("add-savings".equals(action)) {
-                int goalId = Integer.parseInt(request.getParameter("id"));
-                double amount = Double.parseDouble(request.getParameter("amount"));
-                goalService.addSavings(goalId, amount);
-                request.getSession().setAttribute("success", "Savings added successfully");
-            } else if ("delete".equals(action)) {
-                int id = Integer.parseInt(request.getParameter("id"));
-                goalService.deleteGoal(id);
-                request.getSession().setAttribute("success", "Goal deleted successfully");
-            } else if ("edit".equals(action)) {
-                Goal goal = new Goal();
-                goal.setId(Integer.parseInt(request.getParameter("id")));
-                goal.setUserId(SessionUtil.getUserId(request));
-                goal.setTitle(request.getParameter("title"));
-                goal.setDescription(request.getParameter("description"));
-                goal.setTargetAmount(Double.parseDouble(request.getParameter("targetAmount")));
-                goal.setSavedAmount(Double.parseDouble(request.getParameter("savedAmount")));
-                goal.setDeadline(LocalDate.parse(request.getParameter("deadline")));
-                goal.setStatus(Goal.GoalStatus.valueOf(request.getParameter("status")));
+            Goal goal = new Goal(userId, title, description, target, 0.0, deadline, Goal.GoalStatus.IN_PROGRESS);
+            ApiResponse<Goal> result = goalService.createGoal(goal);
 
-                goalService.updateGoal(goal);
-                request.getSession().setAttribute("success", "Goal updated successfully");
+            if (result.isSuccess()) {
+                SessionUtil.setFlashSuccess(request, "Target goal '" + title + "' initialized!");
+            } else {
+                SessionUtil.setFlashError(request, result.getMessage());
             }
-
-            response.sendRedirect(request.getContextPath() + "/goals");
-        } catch (SQLException | ValidationException e) {
-            request.getSession().setAttribute("error", e.getMessage());
-            response.sendRedirect(request.getContextPath() + "/goals");
+        } catch (Exception e) {
+            SessionUtil.setFlashError(request, "Invalid goal values: " + e.getMessage());
         }
+
+        response.sendRedirect(request.getContextPath() + "/goals");
+    }
+
+    private void handleAddSavings(HttpServletRequest request, HttpServletResponse response, int userId) throws IOException {
+        String goalIdStr = request.getParameter("goalId");
+        String amountStr = request.getParameter("amount");
+
+        try {
+            int goalId = Integer.parseInt(goalIdStr);
+            double amount = Double.parseDouble(amountStr);
+
+            ApiResponse<Goal> result = goalService.addSavings(goalId, userId, amount);
+            if (result.isSuccess()) {
+                SessionUtil.setFlashSuccess(request, result.getMessage());
+            } else {
+                SessionUtil.setFlashError(request, result.getMessage());
+            }
+        } catch (Exception e) {
+            SessionUtil.setFlashError(request, "Invalid savings amount: " + e.getMessage());
+        }
+
+        response.sendRedirect(request.getContextPath() + "/goals");
+    }
+
+    private void handleEdit(HttpServletRequest request, HttpServletResponse response, int userId) throws IOException {
+        String idStr = request.getParameter("id");
+        String title = request.getParameter("title");
+        String description = request.getParameter("description");
+        String targetStr = request.getParameter("targetAmount");
+        String savedStr = request.getParameter("savedAmount");
+        String deadlineStr = request.getParameter("deadline");
+        String statusStr = request.getParameter("status");
+
+        try {
+            int id = Integer.parseInt(idStr);
+            double target = Double.parseDouble(targetStr);
+            double saved = Double.parseDouble(savedStr);
+            LocalDate deadline = LocalDate.parse(deadlineStr);
+            Goal.GoalStatus status = Goal.GoalStatus.valueOf(statusStr);
+
+            Goal goal = new Goal(id, userId, title, description, target, saved, deadline, status, null);
+            ApiResponse<Goal> result = goalService.updateGoal(goal);
+
+            if (result.isSuccess()) {
+                SessionUtil.setFlashSuccess(request, "Goal updated successfully.");
+            } else {
+                SessionUtil.setFlashError(request, result.getMessage());
+            }
+        } catch (Exception e) {
+            SessionUtil.setFlashError(request, "Error updating goal: " + e.getMessage());
+        }
+
+        response.sendRedirect(request.getContextPath() + "/goals");
+    }
+
+    private void handleDelete(HttpServletRequest request, HttpServletResponse response, int userId) throws IOException {
+        String idStr = request.getParameter("id");
+        try {
+            int id = Integer.parseInt(idStr);
+            ApiResponse<Boolean> result = goalService.deleteGoal(id, userId);
+            if (result.isSuccess()) {
+                SessionUtil.setFlashSuccess(request, "Goal deleted.");
+            } else {
+                SessionUtil.setFlashError(request, result.getMessage());
+            }
+        } catch (Exception e) {
+            SessionUtil.setFlashError(request, "Error deleting goal: " + e.getMessage());
+        }
+
+        response.sendRedirect(request.getContextPath() + "/goals");
     }
 }

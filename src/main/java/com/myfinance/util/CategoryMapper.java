@@ -1,100 +1,164 @@
 package com.myfinance.util;
 
+import com.myfinance.model.Category;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-public class CategoryMapper {
-    private static final Map<String, String> keywordToCategory = new HashMap<>();
+/**
+ * Category Auto-Suggestion Engine (Innovation 5).
+ * Automatically maps transaction descriptions and merchant names to standard spending categories.
+ */
+public final class CategoryMapper {
+
+    private static final Map<String, String> KEYWORD_MAP = new HashMap<>();
 
     static {
-        // Food
-        keywordToCategory.put("swiggy", "Food");
-        keywordToCategory.put("zomato", "Food");
-        keywordToCategory.put("food", "Food");
-        keywordToCategory.put("restaurant", "Food");
-        keywordToCategory.put("cafe", "Food");
-        keywordToCategory.put("pizza", "Food");
-        keywordToCategory.put("burger", "Food");
-        keywordToCategory.put("lunch", "Food");
-        keywordToCategory.put("dinner", "Food");
-        keywordToCategory.put("breakfast", "Food");
+        // Food & Dining
+        registerKeywords(Category.FOOD,
+                "swiggy", "zomato", "mcdonalds", "mcdonald", "kfc", "starbucks", "dominos", "pizza", "burger",
+                "cafe", "restaurant", "dining", "groceries", "blinkit", "zepto", "instamart",
+                "bigbasket", "subway", "barbeque", "dosa", "biryani", "food", "supermarket",
+                "tea", "chai", "coffee", "baker", "bakery");
 
-        // Transport
-        keywordToCategory.put("ola", "Transport");
-        keywordToCategory.put("uber", "Transport");
-        keywordToCategory.put("taxi", "Transport");
-        keywordToCategory.put("auto", "Transport");
-        keywordToCategory.put("rickshaw", "Transport");
-        keywordToCategory.put("bus", "Transport");
-        keywordToCategory.put("metro", "Transport");
-        keywordToCategory.put("train", "Transport");
-        keywordToCategory.put("petrol", "Transport");
-        keywordToCategory.put("fuel", "Transport");
-        keywordToCategory.put("diesel", "Transport");
+        // Transport & Fuel
+        registerKeywords(Category.TRANSPORT,
+                "uber", "ola", "rapido", "metro", "fuel", "petrol", "diesel", "shell", "hp petrol",
+                "indian oil", "irctc", "flight", "indigo", "air india", "bus", "redbus",
+                "parking", "fastag", "toll", "cab", "taxi", "train");
 
         // Shopping
-        keywordToCategory.put("amazon", "Shopping");
-        keywordToCategory.put("flipkart", "Shopping");
-        keywordToCategory.put("myntra", "Shopping");
-        keywordToCategory.put("ajio", "Shopping");
-        keywordToCategory.put("shop", "Shopping");
-        keywordToCategory.put("mall", "Shopping");
-        keywordToCategory.put("clothes", "Shopping");
-        keywordToCategory.put("shoes", "Shopping");
-        keywordToCategory.put("electronics", "Shopping");
+        registerKeywords(Category.SHOPPING,
+                "amazon", "flipkart", "myntra", "ajio", "zara", "h&m", "nike", "adidas",
+                "clothes", "shoes", "electronics", "croma", "reliance digital", "apple",
+                "mall", "shopping", "lifestyle", "meesho", "nykaa");
+
+        // Bills & Utilities
+        registerKeywords(Category.UTILITIES,
+                "electricity", "bescom", "water bill", "gas bill", "cylinder", "broadband", "wifi",
+                "airtel", "jio", "vi", "vodafone", "recharge", "dth", "tata play",
+                "tatasky", "utility", "bills", "electricity bill");
+
+        // Rent & Housing
+        registerKeywords(Category.HOUSING,
+                "rent", "maintenance", "landlord", "flat", "pg", "society", "apartment",
+                "furniture", "ikea", "urban company", "plumber");
 
         // Entertainment
-        keywordToCategory.put("netflix", "Entertainment");
-        keywordToCategory.put("prime", "Entertainment");
-        keywordToCategory.put("spotify", "Entertainment");
-        keywordToCategory.put("movie", "Entertainment");
-        keywordToCategory.put("cinema", "Entertainment");
-        keywordToCategory.put("concert", "Entertainment");
-        keywordToCategory.put("game", "Entertainment");
+        registerKeywords(Category.ENTERTAINMENT,
+                "netflix", "spotify", "prime video", "hotstar", "disney", "cinema", "pvr",
+                "inox", "bookmyshow", "movie", "game", "steam", "playstation", "theatre");
 
-        // Utilities
-        keywordToCategory.put("electricity", "Utilities");
-        keywordToCategory.put("water", "Utilities");
-        keywordToCategory.put("gas", "Utilities");
-        keywordToCategory.put("internet", "Utilities");
-        keywordToCategory.put("mobile", "Utilities");
-        keywordToCategory.put("phone", "Utilities");
-        keywordToCategory.put("recharge", "Utilities");
-
-        // Health
-        keywordToCategory.put("medicine", "Health");
-        keywordToCategory.put("doctor", "Health");
-        keywordToCategory.put("hospital", "Health");
-        keywordToCategory.put("pharmacy", "Health");
-        keywordToCategory.put("gym", "Health");
-        keywordToCategory.put("fitness", "Health");
+        // Health & Medical
+        registerKeywords(Category.HEALTH,
+                "pharmacy", "apollo", "medplus", "hospital", "doctor", "medicine", "1mg",
+                "pharmeasy", "clinic", "dental", "gym", "cult.fit", "fitness", "lab", "diagnostics");
 
         // Education
-        keywordToCategory.put("book", "Education");
-        keywordToCategory.put("course", "Education");
-        keywordToCategory.put("tuition", "Education");
-        keywordToCategory.put("class", "Education");
-        keywordToCategory.put("school", "Education");
-        keywordToCategory.put("college", "Education");
+        registerKeywords(Category.EDUCATION,
+                "coursera", "udemy", "tuition", "books", "college", "fees", "course",
+                "exam", "school", "stationery", "kindle");
 
-        // Others
-        keywordToCategory.put("gift", "Others");
-        keywordToCategory.put("donation", "Others");
-        keywordToCategory.put("charity", "Others");
+        // Investment & Savings
+        registerKeywords(Category.INVESTMENT,
+                "zerodha", "groww", "mutual fund", "sip", "stocks", "crypto", "fixed deposit",
+                "fd", "rd", "gold", "upstox", "coin", "etmoney");
     }
 
-    public static String suggest(String title) {
-        if (title == null || title.isEmpty()) {
-            return "Others";
+    private CategoryMapper() {
+        // Utility class
+    }
+
+    private static void registerKeywords(String category, String... keywords) {
+        for (String kw : keywords) {
+            KEYWORD_MAP.put(kw.toLowerCase(Locale.ROOT), category);
+        }
+    }
+
+    /**
+     * Inspects input text (merchant, title, or description) and suggests the best matching category.
+     * Uses word-boundary matching to prevent false-positive substring captures.
+     *
+     * @param input text to analyze
+     * @return predicted category name, or {@link Category#OTHER} if no keyword matches
+     */
+    public static String suggest(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return Category.OTHER;
         }
 
-        String lowerTitle = title.toLowerCase();
-        for (Map.Entry<String, String> entry : keywordToCategory.entrySet()) {
-            if (lowerTitle.contains(entry.getKey())) {
+        String lower = input.toLowerCase(Locale.ROOT);
+
+        // 1. Check exact word/phrase boundary matches
+        for (Map.Entry<String, String> entry : KEYWORD_MAP.entrySet()) {
+            String keyword = entry.getKey();
+            String regex = "\\b" + Pattern.quote(keyword) + "\\b";
+            if (Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(lower).find()) {
                 return entry.getValue();
             }
         }
 
-        return "Others";
+        // 2. Tokenized direct lookup
+        String[] tokens = lower.split("[^a-zA-Z0-9]+");
+        for (String token : tokens) {
+            if (KEYWORD_MAP.containsKey(token)) {
+                return KEYWORD_MAP.get(token);
+            }
+        }
+
+        return Category.OTHER;
+    }
+
+    /**
+     * Normalizes any category string (e.g. "Food", "Dining", "Food & Dining") into the
+     * canonical Category constant to guarantee consistent matching between expenses,
+     * budgets, and Spend Guard.
+     *
+     * @param category category input string
+     * @return canonical category string from {@link Category}
+     */
+    public static String normalize(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            return Category.OTHER;
+        }
+
+        String trimmed = category.trim();
+        for (String c : Category.ALL_CATEGORIES) {
+            if (c.equalsIgnoreCase(trimmed)) {
+                return c;
+            }
+        }
+
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        if (lower.equals("food") || lower.equals("dining") || lower.contains("food")) {
+            return Category.FOOD;
+        }
+        if (lower.equals("transport") || lower.equals("travel") || lower.equals("fuel") || lower.contains("transport")) {
+            return Category.TRANSPORT;
+        }
+        if (lower.equals("shopping") || lower.contains("shop")) {
+            return Category.SHOPPING;
+        }
+        if (lower.equals("bills") || lower.equals("utilities") || lower.equals("utility") || lower.contains("bill")) {
+            return Category.UTILITIES;
+        }
+        if (lower.equals("housing") || lower.equals("rent") || lower.contains("rent") || lower.contains("house")) {
+            return Category.HOUSING;
+        }
+        if (lower.equals("entertainment") || lower.contains("entertain")) {
+            return Category.ENTERTAINMENT;
+        }
+        if (lower.equals("health") || lower.equals("medical") || lower.contains("health") || lower.contains("medic")) {
+            return Category.HEALTH;
+        }
+        if (lower.equals("education") || lower.contains("educat")) {
+            return Category.EDUCATION;
+        }
+        if (lower.equals("investment") || lower.equals("savings") || lower.contains("invest") || lower.contains("saving")) {
+            return Category.INVESTMENT;
+        }
+
+        return Category.OTHER;
     }
 }
